@@ -17,12 +17,30 @@ import { Ionicons } from '@expo/vector-icons';
 import { Logger } from '../utils/Logger';
 import MapView, { Marker } from 'react-native-maps';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useLayout } from '../contexts/LayoutContext';
 
 export default function EventDetailScreen({ event, status, onClose, bottomInset = 0, onParticipationChange }) {
   // Initialize state with props but don't update when props change
   const [participating, setParticipating] = useState(event.userParticipating || false);
   const [participantsCount, setParticipantsCount] = useState(event.participants || 0);
   const insets = useSafeAreaInsets();
+
+  // Access the layout context if available
+  let layoutContext = null;
+  try {
+    layoutContext = useLayout();
+  } catch (e) {
+    // Context may not be available
+  }
+  
+  // Helper function to reset layout using context when possible
+  const resetLayout = useCallback(() => {
+    if (layoutContext?.resetEventsLayout) {
+      layoutContext.resetEventsLayout();
+    } else if (global.resetEventsLayout) {
+      global.resetEventsLayout();
+    }
+  }, [layoutContext]);
 
   // Use useCallback for functions passed to child components
   const handleParticipation = useCallback(() => {
@@ -106,18 +124,16 @@ export default function EventDetailScreen({ event, status, onClose, bottomInset 
       
       // Then wait for any animations or interactions to complete
       InteractionManager.runAfterInteractions(() => {
-        // Reset layout in parent screens with explicit delay to ensure all animations are complete
+        // Reset layout using our helper function
         setTimeout(() => {
-          if (global.resetEventsLayout) {
-            global.resetEventsLayout();
-          }
+          resetLayout();
           
           // Finally, close the modal
           onClose();
         }, 50);
       });
     });
-  }, [onClose, participating, onParticipationChange]);
+  }, [onClose, participating, onParticipationChange, resetLayout]);
 
   // Enhanced hardware back press handling
   useEffect(() => {

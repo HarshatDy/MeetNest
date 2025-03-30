@@ -3,12 +3,11 @@ import {
   View, 
   StyleSheet, 
   FlatList 
-  // SafeAreaView removed from here
 } from 'react-native';
-// Add SafeAreaView context import if needed
 import { SafeAreaView } from 'react-native-safe-area-context';
 import EventCard from '../../components/EventCard';
 import { Logger } from '../../utils/Logger';
+import { useLayout } from '../../contexts/LayoutContext';
 
 const COMPLETED_EVENTS = [
   {
@@ -55,49 +54,30 @@ export default function CompletedEventsScreen() {
   const listRef = useRef(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const scrollPosition = useRef(0);
-  const lastResetTime = useRef(Date.now());
+  
+  // Use the layout context
+  const { registerScrollPosition, restoreScrollPosition, activeTab } = useLayout();
 
-  // Enhanced global reset function with scroll position preservation
+  // Effect to handle layout restoration when this tab becomes active
   useEffect(() => {
-    global.resetEventsLayout = () => {
-      // Don't reset too frequently
-      const now = Date.now();
-      if (now - lastResetTime.current < 100) {
-        return;
-      }
-      lastResetTime.current = now;
-      
-      Logger.debug('CompletedEventsScreen', 'Resetting layout');
-      
-      // Store current scroll position for restoration
-      // We'll use the onScroll event to track this instead of measuring
-      
-      // Force re-render with a new key
-      setRefreshKey(prev => prev + 1);
-      
-      // Restore scroll position after a moment
+    if (activeTab === 'Completed') {
+      // When this tab is active, restore its scroll position
       setTimeout(() => {
-        if (listRef.current && scrollPosition.current > 0) {
-          try {
-            listRef.current.scrollToOffset({ 
-              offset: scrollPosition.current, 
-              animated: false 
-            });
-          } catch (err) {
-            Logger.error('CompletedEventsScreen', 'Error restoring scroll position', { error: err.message });
+        try {
+          const savedPosition = restoreScrollPosition('Completed');
+          if (savedPosition > 0 && listRef.current) {
+            listRef.current.scrollToOffset({ offset: savedPosition, animated: false });
           }
+        } catch (err) {
+          Logger.error('CompletedEventsScreen', 'Error restoring scroll position', { error: err.message });
         }
-      }, 100);
-    };
-    
-    return () => {
-      // Cleanup global function when component unmounts
-      if (global.resetEventsLayout) {
-        global.resetEventsLayout = null;
-      }
-    };
-  }, []);
-
+      }, 50);
+      
+      // Force refresh when tab becomes active
+      setRefreshKey(prev => prev + 1);
+    }
+  }, [activeTab, restoreScrollPosition]);
+  
   return (
     <View style={styles.container} key={`completed-events-${refreshKey}`}>
       <FlatList
@@ -110,20 +90,21 @@ export default function CompletedEventsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         removeClippedSubviews={false}
-        initialNumToRender={10} // Increased to reduce chance of blank areas
+        initialNumToRender={10}
         maxToRenderPerBatch={10}
-        windowSize={15} // Increased for better rendering performance
+        windowSize={15}
         maintainVisibleContentPosition={{
           minIndexForVisible: 0,
           autoscrollToTopThreshold: 10,
         }}
         onScroll={(e) => {
-          // Simple way to track scroll position
-          scrollPosition.current = e.nativeEvent.contentOffset.y;
+          // Track scroll position and store it in context
+          const position = e.nativeEvent.contentOffset.y;
+          scrollPosition.current = position;
+          registerScrollPosition('Completed', position);
         }}
         scrollEventThrottle={16}
         onLayout={() => {
-          // Reset to top when remounting/relayouting
           if (scrollPosition.current === 0) {
             listRef.current?.scrollToOffset({ offset: 0, animated: false });
           }

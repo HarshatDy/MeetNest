@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import EventCard from '../../components/EventCard';
 import { Ionicons } from '@expo/vector-icons';
 import { Logger } from '../../utils/Logger';
+import { useLayout } from '../../contexts/LayoutContext';
 
 const SCHEDULED_EVENTS = [
   {
@@ -84,47 +85,29 @@ export default function ScheduledEventsScreen({ navigation }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const scrollPosition = useRef(0);
   const lastResetTime = useRef(Date.now());
+  
+  // Use the layout context instead of defining our own reset function
+  const { resetEventsLayout, registerScrollPosition, restoreScrollPosition, activeTab } = useLayout();
 
-  // Enhanced global reset function with scroll position preservation
+  // Effect to handle layout restoration when this tab becomes active
   useEffect(() => {
-    global.resetEventsLayout = () => {
-      // Don't reset too frequently
-      const now = Date.now();
-      if (now - lastResetTime.current < 100) {
-        return;
-      }
-      lastResetTime.current = now;
-      
-      Logger.debug('ScheduledEventsScreen', 'Resetting layout');
-      
-      // Store current scroll position for restoration
-      // We'll use the onScroll event to track this instead of measuring
-      
-      // Force re-render with a new key
-      setRefreshKey(prev => prev + 1);
-      
-      // Restore scroll position after a moment
+    if (activeTab === 'Scheduled') {
+      // When this tab is active, restore its scroll position
       setTimeout(() => {
-        if (listRef.current && scrollPosition.current > 0) {
-          try {
-            listRef.current.scrollToOffset({ 
-              offset: scrollPosition.current, 
-              animated: false 
-            });
-          } catch (err) {
-            Logger.error('ScheduledEventsScreen', 'Error restoring scroll position', { error: err.message });
+        try {
+          const savedPosition = restoreScrollPosition('Scheduled');
+          if (savedPosition > 0 && listRef.current) {
+            listRef.current.scrollToOffset({ offset: savedPosition, animated: false });
           }
+        } catch (err) {
+          Logger.error('ScheduledEventsScreen', 'Error restoring scroll position', { error: err.message });
         }
-      }, 100);
-    };
-    
-    return () => {
-      // Cleanup global function when component unmounts
-      if (global.resetEventsLayout) {
-        global.resetEventsLayout = null;
-      }
-    };
-  }, []);
+      }, 50);
+      
+      // Force refresh when tab becomes active to ensure proper layout
+      setRefreshKey(prev => prev + 1);
+    }
+  }, [activeTab, restoreScrollPosition]);
 
   return (
     <View style={styles.container} key={`scheduled-events-${refreshKey}`}>
@@ -137,21 +120,22 @@ export default function ScheduledEventsScreen({ navigation }) {
         )}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
-        removeClippedSubviews={false} // Prevents layout shifts when items are recycled
-        initialNumToRender={10} // Increased to reduce chance of blank areas
+        removeClippedSubviews={false}
+        initialNumToRender={10}
         maxToRenderPerBatch={10}
-        windowSize={15} // Increased for better rendering performance
+        windowSize={15}
         maintainVisibleContentPosition={{
           minIndexForVisible: 0,
           autoscrollToTopThreshold: 10,
         }}
         onScroll={(e) => {
-          // Simple way to track scroll position
-          scrollPosition.current = e.nativeEvent.contentOffset.y;
+          // Track scroll position and store it in context
+          const position = e.nativeEvent.contentOffset.y;
+          scrollPosition.current = position;
+          registerScrollPosition('Scheduled', position);
         }}
         scrollEventThrottle={16}
         onLayout={() => {
-          // Reset to top when remounting/relayouting
           if (scrollPosition.current === 0) {
             listRef.current?.scrollToOffset({ offset: 0, animated: false });
           }

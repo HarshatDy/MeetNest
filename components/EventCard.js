@@ -15,10 +15,11 @@ import {
   BackHandler
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import EventDetailScreen from '../screens/EventDetailScreen';
 import { Logger } from '../utils/Logger';
 import TabBarManager from '../utils/TabBarVisibilityManager';
+import { useLayout } from '../contexts/LayoutContext';
 
 // Enable layout animation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -31,6 +32,14 @@ export default function EventCard({ event, status }) {
   const [participantsCount, setParticipantsCount] = useState(event.participants || 0);
   const insets = useSafeAreaInsets();
   
+  // Use layout context for centralized layout management
+  let layoutContext = null;
+  try {
+    layoutContext = useLayout();
+  } catch (e) {
+    // Context may not be available, will fall back to global function
+  }
+  
   // Add refs for tracking modal state
   const mountedRef = useRef(true);
   const modalHasBeenShown = useRef(false);
@@ -39,6 +48,15 @@ export default function EventCard({ event, status }) {
 
   // Track original tab visibility and restore it
   const previousTabVisibility = useRef(global.TabsVisible);
+
+  // Helper function to reset layout using context when possible
+  const resetLayout = () => {
+    if (layoutContext?.resetEventsLayout) {
+      layoutContext.resetEventsLayout();
+    } else if (global.resetEventsLayout) {
+      global.resetEventsLayout();
+    }
+  };
 
   // Log when component mounts and unmounts
   React.useEffect(() => {
@@ -111,10 +129,8 @@ export default function EventCard({ event, status }) {
         
         // Request immediate animation frame for layout corrections
         requestAnimationFrame(() => {
-          // Force a layout reset throughout the app
-          if (global.resetEventsLayout) {
-            global.resetEventsLayout();
-          }
+          // Use our layout reset helper that prefers context when available
+          resetLayout();
           
           // Apply layout animation for smooth transition
           if (Platform.OS === 'android') {
@@ -123,29 +139,27 @@ export default function EventCard({ event, status }) {
           
           // Force screen to re-layout after modal is dismissed with delay to ensure all animations complete
           setTimeout(() => {
-            if (global.resetEventsLayout && mountedRef.current) {
-              global.resetEventsLayout();
-              
-              // Compare layout after modal closes to ensure it returned to original position
-              if (cardRef.current && cardRef.current.measureInWindow && initialLayout.current) {
-                cardRef.current.measureInWindow((x, y, width, height) => {
-                  const drift = Math.abs(y - (initialLayout.current.y || 0));
-                  Logger.debug('EventCard', `Position drift after modal: ${drift}px`, { 
-                    eventId: event.id,
-                    originalY: initialLayout.current.y,
-                    newY: y
-                  });
-                  
-                  // If significant drift detected, force another layout reset
-                  if (drift > 5) {
-                    setTimeout(() => {
-                      if (global.resetEventsLayout && mountedRef.current) {
-                        global.resetEventsLayout();
-                      }
-                    }, 100);
-                  }
+            resetLayout();
+            
+            // Compare layout after modal closes to ensure it returned to original position
+            if (cardRef.current && cardRef.current.measureInWindow && initialLayout.current) {
+              cardRef.current.measureInWindow((x, y, width, height) => {
+                const drift = Math.abs(y - (initialLayout.current.y || 0));
+                Logger.debug('EventCard', `Position drift after modal: ${drift}px`, { 
+                  eventId: event.id,
+                  originalY: initialLayout.current.y,
+                  newY: y
                 });
-              }
+                
+                // If significant drift detected, force another layout reset
+                if (drift > 5) {
+                  setTimeout(() => {
+                    if (mountedRef.current) {
+                      resetLayout();
+                    }
+                  }, 100);
+                }
+              });
             }
           }, 250);
         });
@@ -220,12 +234,12 @@ export default function EventCard({ event, status }) {
       // Defer layout recalculations with enough time for animation to complete
       setTimeout(() => {
         requestAnimationFrame(() => {
-          if (global.resetEventsLayout && mountedRef.current) {
+          if (mountedRef.current) {
             // Apply smooth layout transition
             if (Platform.OS === 'android') {
               LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             }
-            global.resetEventsLayout();
+            resetLayout();
           }
         });
       }, 200);
@@ -366,9 +380,7 @@ export default function EventCard({ event, status }) {
           global.TabsVisible = true;
           
           setTimeout(() => {
-            if (global.resetEventsLayout) {
-              global.resetEventsLayout();
-            }
+            resetLayout();
           }, 100);
         }}
       >
