@@ -1,29 +1,29 @@
 import mongoose from 'mongoose';
 
-// User schema
+// User schema - updated to match users.json
 const userSchema = new mongoose.Schema({
-  _id: String, // Use Firebase UID
+  _id: { type: String, required: true }, // Use Firebase UID
   email: { type: String, required: true },
   displayName: String,
-  societies: [String],
+  societies: { type: [String], required: true },
   points: { type: Number, default: 0 },
   achievements: [{
-    id: String,
-    dateUnlocked: Date
+    id: { type: String },
+    dateUnlocked: { type: Date }
   }]
 }, { timestamps: true });
 
-// Tournament Results schema
+// Tournament Results schema - updated to match tournaments_result.json
 const tournamentResultSchema = new mongoose.Schema({
   tournamentId: { type: String, required: true },
   participants: [{
-    id: String,
-    name: String,
-    societyId: String
+    id: { type: String },
+    name: { type: String },
+    societyId: { type: String }
   }],
   results: {
-    winner: String,
-    runnerUp: String,
+    winner: { type: String },
+    runnerUp: { type: String },
     matches: [{
       round: Number,
       player1: String,

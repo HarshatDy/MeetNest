@@ -6,7 +6,9 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "deploy:schemas": "node src/scripts/deploy_schemas.mjs",
+    "verify:schemas": "curl http://localhost:5001/meetnest-67b2b/us-central1/verifySchemas"
   },
   "dependencies": {
     "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
@@ -32,6 +34,8 @@
   "devDependencies": {
     "@babel/core": "^7.20.0",
     "@types/react": "~18.3.12",
+    "dotenv": "^16.3.1",
+    "mongodb": "^6.15.0",
     "typescript": "^5.3.3"
   },
   "private": true,

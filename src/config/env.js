@@ -3,15 +3,16 @@
 
 const ENV = {
   development: {
-    apiUrl: 'http://localhost:5001/your-project/us-central1/api', // Firebase Functions local emulator URL
+    // Use the deployed API URL instead of local emulator to avoid connection issues
+    apiUrl: 'https://us-central1-meetnest-67b2b.cloudfunctions.net/api',
     mongoDbUri: 'mongodb+srv://dhanayatharshat:1QKAGyDWzkUi9UV0@meetnestv0.j9j7rft.mongodb.net/',
     dbName: 'meetnest_v0',
     // Add other development environment variables here
   },
   production: {
-    apiUrl: 'https://us-central1-your-project.cloudfunctions.net/api', // Replace with your deployed Firebase Functions URL
-    mongoDbUri: 'mongodb+srv://your-production-connection-string',
-    dbName: 'neighborly',
+    apiUrl: 'https://us-central1-meetnest-67b2b.cloudfunctions.net/api', // Firebase Functions deployed URL
+    mongoDbUri: 'mongodb+srv://dhanayatharshat:1QKAGyDWzkUi9UV0@meetnestv0.j9j7rft.mongodb.net/',
+    dbName: 'meetnest_v0',
     // Add other production environment variables here
   }
 };

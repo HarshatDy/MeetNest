@@ -1,4 +1,4 @@
-import apiClient from '../services/apiClient';
+import apiClient from '../services/apiClient.js';
 import env from './env';
 
 // Database name
@@ -6,6 +6,8 @@ const dbName = env.dbName || 'neighborly';
 
 // Connection state
 let isConnected = false;
+let connectionRetries = 0;
+const MAX_RETRIES = 3;
 
 // Connect to MongoDB via the API
 export async function connectToDatabase() {
@@ -17,11 +19,22 @@ export async function connectToDatabase() {
     // Test connection by making a simple API call
     await apiClient.getUser('test-connection');
     isConnected = true;
+    connectionRetries = 0; // Reset retry count on successful connection
     console.log('Connected to MongoDB API');
     return { db: dbName };
   } catch (error) {
-    console.error('Failed to connect to MongoDB API', error);
-    throw error;
+    connectionRetries++;
+    console.error(`Failed to connect to MongoDB API (Attempt ${connectionRetries}/${MAX_RETRIES})`, error);
+    
+    if (connectionRetries < MAX_RETRIES) {
+      console.log('Retrying connection in 2 seconds...');
+      // Wait 2 seconds before retrying
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return connectToDatabase(); // Retry connection
+    }
+    
+    console.error('Maximum connection retries reached. Falling back to offline mode.');
+    throw new Error('Failed to connect to API after multiple attempts');
   }
 }
 
@@ -29,6 +42,7 @@ export async function connectToDatabase() {
 export async function closeConnection() {
   if (isConnected) {
     isConnected = false;
+    connectionRetries = 0;
     console.log('Disconnected from MongoDB API');
   }
 }
@@ -40,6 +54,18 @@ export async function closeConnection() {
 export function getCollection(collectionName) {
   return {
     find: async (query) => {
+      // Check connection status first
+      if (!isConnected) {
+        console.warn('Attempting to use MongoDB API while disconnected');
+        
+        // Try to reconnect if not connected
+        try {
+          await connectToDatabase();
+        } catch (error) {
+          throw new Error('Cannot access collection: API is offline');
+        }
+      }
+      
       // Map collection names to API endpoints
       switch(collectionName) {
         case 'users':
@@ -53,6 +79,18 @@ export function getCollection(collectionName) {
       }
     },
     insertOne: async (document) => {
+      // Check connection status first
+      if (!isConnected) {
+        console.warn('Attempting to use MongoDB API while disconnected');
+        
+        // Try to reconnect if not connected
+        try {
+          await connectToDatabase();
+        } catch (error) {
+          throw new Error('Cannot insert document: API is offline');
+        }
+      }
+      
       // Map collection names to API endpoints
       switch(collectionName) {
         case 'users':
