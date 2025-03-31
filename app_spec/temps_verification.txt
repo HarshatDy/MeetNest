@@ -1,0 +1,182 @@
+Sure! For Temps (temporary residents) or Rentals, the verification process can be adapted to ensure that a previous resident of the house is the one who approves the temporary resident's application. This creates a secure and trust-based system where the current resident (who knows the temp or rental) can validate their identity and connection to the house.
+Here’s a detailed breakdown of the process:
+Verification Process for Temps (Rentals)
+1. Initial Application Submission by the Temp (Rental)
+When a temporary resident or rental (referred to as "temps") wishes to move into a house in the society, they will go through a similar process to the residents, but with a key difference: the approval will come from the previous resident, not the president.
+Steps:
+Step 1: The applicant (Temp/Rental) fills out the application form, providing:
+
+
+Basic personal information (name, contact details, etc.).
+
+
+Duration of stay (e.g., 6 months, 1 year).
+
+
+Relationship with the resident (who they know in the society).
+
+
+Reason for staying (optional).
+
+
+Step 2: The temp is asked to provide society-related information to ensure they are familiar with the society. These questions will be similar to those for residents but may focus on the temporary nature of their stay:
+
+
+Who is the current president of the society?
+
+
+What is the building number or floor of the house they are staying in?
+
+
+Are they aware of the society’s rules for temporary residents?
+
+
+2. Verification Request by the Resident
+After the temp submits their application, the process goes into a pending state while awaiting approval from the resident who previously lived in the house (the current resident). The system will notify the current resident to approve or reject the temp’s application.
+Step 1: Resident Receives Verification Request
+The system sends a notification to the previous resident (the person currently living in the house, where the temp will be staying). The notification may come through email or in-app notifications, asking the resident to verify the temp's stay.
+
+
+Step 2: Resident Verifies Temp
+The resident logs into the app and views the temp’s application.
+
+
+They are presented with details of the temp (name, contact, reason for stay, duration, etc.).
+
+
+The resident can choose to either approve or reject the application based on their knowledge and comfort with the applicant.
+
+
+To ensure this verification is not done fraudulently, the app can include security checks:
+
+
+Two-Factor Authentication (2FA) for residents when they approve or reject the temp.
+
+
+The resident may also be asked to confirm their relationship with the temp, such as how they know the temp or why they would approve their stay.
+
+
+Step 3: Resident Provides House Number & Passage Details
+The resident can also upload proof of their residence (house number, passage photos) to confirm that they are indeed the rightful tenant.
+
+
+If the resident’s identity is not already verified, they may be asked to upload proof of residence (a utility bill, rent agreement, etc.).
+
+
+3. Final Approval by the President (Optional Step)
+After the resident has approved the Temp’s application, the system could either automatically move the temp to an active state, or an optional second layer of approval could be added by the President for final validation. This adds an extra layer of oversight.
+Step 1: President Reviews
+The President can review the application in the admin dashboard. They can view the resident’s approval and the temp’s details.
+
+
+Optional Step: The President can request additional information if necessary, such as:
+
+
+Confirmation of the rent agreement.
+
+
+Additional identification for the temp.
+
+
+Step 2: Approval/Rejection by the President
+If everything is in order, the President approves the temp’s status as a valid resident, and the temp’s status changes from pending to active.
+
+
+If rejected, the temp is notified with a reason for rejection.
+
+
+4. Notifications & Communication
+After the application is processed, the temp will be notified whether their application has been approved or rejected.
+
+
+The resident who approved the application should also receive a confirmation that their verification has been completed.
+
+
+The President (if they are involved in final approval) will be notified of the approval/rejection, and the temp's status will be updated in the system.
+
+
+
+Security Considerations for Temps (Rentals)
+Resident Verification:
+
+
+Ensure the resident who approves the temp has already been verified in the system, as they are the ones who will validate the temp's identity.
+
+
+Use two-factor authentication (2FA) for residents when approving a temp, ensuring that unauthorized persons cannot approve the application.
+
+
+Temp Verification:
+
+
+Temps should also provide a valid ID (Aadhaar, passport, etc.) to prove their identity.
+
+
+Document uploads (ID proof, lease agreement, etc.) should be encrypted and stored securely.
+
+
+Image Security:
+
+
+The passage photos and house number images provided by the temp and resident should be securely uploaded and encrypted in storage.
+
+
+These images should be viewable only by the President and the resident who approved the temp.
+
+
+Role-based Access Control:
+
+
+Implement role-based access control (RBAC) in the backend so that only the resident can approve the temp and only the President can manage the overall application system.
+
+
+
+Backend Process for Temps (Rentals)
+1. Frontend (Temp & Resident Interaction)
+Temp Application Form: The temp fills out the application form (basic info, society-related questions, reason for stay, etc.).
+
+
+Resident Approval Interface: The resident logs in and approves or rejects the temp’s application.
+
+
+Admin Dashboard: The President (if required) can review applications and make final decisions.
+
+
+2. Backend (Server-Side Logic)
+Temp Application Submission: When a temp submits their application, it is stored in a secure database in the pending state.
+
+
+Resident Approval: The resident receives a notification to approve or reject the temp’s application. Once the resident approves, the status of the temp's application changes to approved (pending President approval if required).
+
+
+Approval Logic: After the resident approves, the system could either:
+
+
+Automatically approve the temp (if no further verification by the President is required).
+
+
+Route it to the President for further validation.
+
+
+3. File Storage & Encryption
+Store the identity documents (ID proof, lease agreements, etc.) in a secure cloud service (like AWS S3 with encryption) or an encrypted database.
+
+
+4. Notification System
+Push notifications or emails to notify the resident, temp, and President about the application status.
+
+
+Sample Flow Diagram for Temp (Rental) Verification Process:
+1. Temp submits application (provides details, documents, society-related questions).
+2. Resident receives notification to approve the temp's stay.
+3. Resident logs in and approves/rejects temp's application.
+4. Resident uploads photos of house number and passage for validation.
+5. If President is required, application is forwarded to them for final review.
+6. Temp is notified of approval/rejection.
+7. Approved temp becomes an active member, can register for society services.
+
+
+Conclusion
+This process establishes a secure and reliable verification system for temporary residents (temps/rentals). The key difference is that residents themselves can approve the application of the temp, ensuring trust and transparency. The President provides an additional layer of oversight if needed. Security features like 2FA, encrypted uploads, and role-based access control ensure that only authorized personnel can approve, view, or manage sensitive information, protecting both residents and temps.
+Would you like a more detailed guide on the backend architecture for this, or any specific implementation tips?
+

@@ -1,0 +1,154 @@
+To design a secure verification process where residents or temps (temporary residents) apply to be a part of a society, and their application eventually reaches the President for approval, we can structure this process into several key steps with both user interaction and backend validation. This would ensure a secure, efficient, and privacy-conscious system for both residents and the president.
+Here's a detailed flow for the application process, followed by implementation suggestions.
+Verification Process Overview
+1. Initial Application Submission by Residents or Temps
+When a resident or temp (let's refer to them as "applicants") wishes to apply to the society, they would need to complete an application form with several society-related questions to ensure that they are genuine and connected to the society. This helps the system determine if they belong to the society, based on their knowledge of it.
+Steps:
+Step 1: The applicant selects whether they are applying as a Resident or Temp.
+
+
+Step 2: The application form asks for basic personal details (name, contact info, relationship with the society, etc.).
+
+
+Step 3: The applicant is asked to answer some society-related questions. For example:
+
+
+Who is the current president of the society?
+
+
+What is the name of the street or building where the society is located?
+
+
+What is the name of the society’s last AGM president (optional for verification)?
+
+
+These questions can be random or tied to actual society details. This step ensures that applicants have at least basic knowledge about the society, which reduces fraudulent applications.
+
+
+2. Verification Process (Pending State)
+After the application is submitted, the system sets the application to a "Pending" state until further verification by the president. During this stage, the resident is asked to provide additional documents for verification.
+Step 1: Upload of Documents and Photos
+The applicant is requested to upload:
+
+
+A clear picture of their house number (to verify residence).
+
+
+A picture of the passage (entrance corridor or part of the building leading to the residence).
+
+
+Step 2: Secure File Upload:
+Ensure that uploaded files are encrypted and securely stored. You can use services like AWS S3 with encryption, or a self-hosted solution that uses AES encryption.
+
+ The files can be temporarily stored in a pending verification database, ensuring they are only accessible to the president during the review process.
+
+
+3. Adding Sub-Residents
+After submitting the required documents, the resident can also register their family or sub-residents who are living in the same house.
+
+
+Sub-Residents can be family members like children, spouse, parents, or any other relatives staying together.
+
+
+The process allows the main resident (the applicant) to enter the details for each sub-resident:
+
+
+Name, age, relationship (child, spouse, etc.), and contact info.
+
+
+Optional: Upload of their identification proofs (Aadhaar card, etc.), depending on the society's rules.
+
+
+4. Verification by the President (Admin Dashboard)
+Once the application is submitted and the required documents are uploaded, the President will be notified of a new pending application. The President will have access to an admin dashboard to review all the details and verify the application.
+Step 1: Verification Dashboard:
+The President can view the application with all details provided by the resident (photos, house number, etc.).
+
+
+The president can view/verify the images uploaded by the resident (house number, passage) to ensure the person is really living in the society.
+
+
+Step 2: Approve or Reject the Application:
+The president can either approve or reject the application. If rejected, the applicant should be notified with a reason. If approved, the resident is added to the society's database, and their status changes from pending to active.
+
+
+Once the resident is approved, the Sub-Residents added by the applicant are also validated and added.
+
+
+Step 3: Access Control:
+Make sure that only the President or authorized personnel can access and verify sensitive documents and images uploaded by residents. This can be done by implementing role-based access control (RBAC) in the backend.
+
+
+5. Notifications & Communication
+After the application is processed, both the resident and the president should receive real-time notifications regarding the status of the application (approved, rejected, pending). This could be done via email or in-app notifications.
+
+
+Security Considerations
+Since sensitive data like personal identification, family details, and residence-related images are being uploaded, the process should be secure.
+1. Data Encryption:
+SSL/TLS for secure transmission of data over the network.
+
+
+AES-256 encryption for storing sensitive files (house number, passage images, etc.).
+
+
+2. Authentication & Authorization:
+Implement two-factor authentication (2FA) for both residents and administrators (President, etc.) to access their accounts.
+
+
+Use role-based access control to ensure only authorized personnel (like the President) can view sensitive data and approve or reject applications.
+
+
+3. Image Security:
+Images should be uploaded and stored in a secure cloud storage solution with access only available to the President (e.g., AWS S3 with encryption).
+
+
+Consider using hashing or tokenization for file verification, ensuring that no data is tampered with.
+
+
+4. User Privacy:
+Ensure that data like family details, photos, etc., are not shared with anyone except authorized personnel.
+
+
+Implement privacy policies to inform users how their data will be used and stored securely.
+
+
+
+Technical Architecture
+1. Frontend (Resident & President Dashboard)
+Web/Mobile App: For residents to fill in applications, upload documents, and track application status.
+
+
+Admin Dashboard: For the President to review, approve/reject applications, and view resident details.
+
+
+2. Backend (Server-Side Logic)
+Application Handling: Use a secure backend (Node.js, Django, etc.) to handle application submissions, user authentication, and role-based access.
+
+
+Database: A secure database (e.g., PostgreSQL, MySQL) to store resident information, status, and associated images.
+
+
+File Storage: Use encrypted cloud storage (AWS S3, Google Cloud Storage) to store uploaded images securely.
+
+
+3. Notification Service
+Implement a push notification or email service to notify residents and the President about the status of the application.
+
+
+Sample Flow Diagram:
+1. Resident submits application.
+2. Resident answers society-related questions.
+3. Resident uploads house images and passage photo.
+4. Application moves to "Pending" state.
+5. President receives notification and reviews the application.
+6. President approves/rejects application.
+7. Resident receives notification on approval/rejection.
+8. If approved, the resident’s details are updated in the system.
+9. Sub-residents are added and verified.
+10. Resident and sub-residents can access society services.
+
+
+Conclusion
+This process ensures that residents are securely verified with only necessary details being used for approval by the President. It focuses on privacy, security, and access control, making sure that only authorized users can access sensitive data. The admin dashboard for the President provides a convenient way to monitor, approve, and manage applications securely.
+

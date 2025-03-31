@@ -1,0 +1,68 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // User profiles - users can read all profiles but only edit their own
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Societies - members can read, only admins can write
+    match /societies/{societyId} {
+      allow read: if request.auth != null && 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)/societies/$(societyId)) ||
+         request.auth.token.admin == true);
+      allow write: if request.auth != null && 
+        (exists(/databases/$(database)/documents/societies/$(societyId)/admins/$(request.auth.uid)) ||
+         request.auth.token.admin == true);
+    }
+    
+    // Posts - visible to society members, writable by author
+    match /posts/{postId} {
+      allow read: if request.auth != null && 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)/societies/$(resource.data.societyId)) ||
+         resource.data.global == true);
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid;
+    }
+    
+    // Comments - same rules as posts
+    match /comments/{commentId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid;
+    }
+    
+    // Events
+    match /events/{eventId} {
+      allow read: if request.auth != null && 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)/societies/$(resource.data.societyId)) ||
+         resource.data.isPublic == true);
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && 
+        (resource.data.organizerId == request.auth.uid || 
+         exists(/databases/$(database)/documents/societies/$(resource.data.societyId)/admins/$(request.auth.uid)));
+    }
+    
+    // Tournaments
+    match /tournaments/{tournamentId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        (exists(/databases/$(database)/documents/societies/$(resource.data.societyId)/admins/$(request.auth.uid)) ||
+         request.auth.token.admin == true);
+    }
+    
+    // Activities
+    match /activities/{activityId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.admin == true;
+    }
+    
+    // Achievements
+    match /achievements/{achievementId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.admin == true;
+    }
+  }
+}
