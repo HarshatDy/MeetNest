@@ -12,6 +12,13 @@ import express, {Request, Response} from "express";
 import cors from "cors";
 import {MongoClient} from "mongodb";
 import {loadSchemas} from "./schemas";
+// Add os and dns modules for IP address lookup
+import * as os from "os";
+import * as dns from "dns";
+import {promisify} from "util";
+
+// Promisify dns.lookup
+const dnsLookup = promisify(dns.lookup);
 
 // Initialize Express app
 const app = express();
@@ -21,7 +28,6 @@ app.use(cors({
   origin: true, // Allow requests from any origin
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true, // Allow credentials
 }));
 app.use(express.json());
 
@@ -30,8 +36,34 @@ const uri = process.env.MONGO_URI || "mongodb+srv://dhanayatharshat:1QKAGyDWzkUi
 const dbName = process.env.DB_NAME || "meetnest_v0";
 
 // Debug logs for MongoDB connection details
-logger.info(`MongoDB URI: ${uri}`);
+logger.info(`MongoDB URI: ${uri.replace(/:[^:]*@/, ":***@")}`);
 logger.info(`MongoDB Database Name: ${dbName}`);
+
+/**
+ * Function to get and log the outgoing IP address
+ */
+async function getOutgoingIpAddress() {
+  try {
+    // Get hostname
+    const hostname = os.hostname();
+    logger.info(`Server hostname: ${hostname}`);
+
+    // Try to get local IP addresses
+    const networkInterfaces = os.networkInterfaces();
+    logger.info("Network interfaces:", networkInterfaces);
+
+    // Simple external service IP check (hostname reso, not actual HTTP req)
+    const externalLookup = await dnsLookup("api.ipify.org");
+    logger.info(
+      `DNS resolution for external service: ${JSON.stringify(externalLookup)}`
+    );
+
+    return "IP detection attempted";
+  } catch (error) {
+    logger.error("Error getting IP address:", error);
+    return "Error getting IP address";
+  }
+}
 
 // MongoDB client
 let client: MongoClient | null = null;
@@ -44,10 +76,22 @@ let schemasLoaded = false;
 async function connectToDatabase() {
   if (client) return client;
 
+  // Log the outgoing IP info before connecting
+  const ipInfo = await getOutgoingIpAddress();
+  logger.info(`Attempting MongoDB connection from: ${ipInfo}`);
+  logger.info(
+    `Connecting to MongoDB at URI: ${uri.replace(/:[^:]*@/, ":***@")}`
+  );
+
   try {
     client = new MongoClient(uri);
     await client.connect();
     logger.info("Connected to MongoDB");
+
+    // Test the connection with a simple command
+    const adminDb = client.db("admin");
+    const pingResult = await adminDb.command({ping: 1});
+    logger.info(`MongoDB ping result: ${JSON.stringify(pingResult)}`);
 
     // Load schemas only once
     if (!schemasLoaded) {
@@ -74,6 +118,30 @@ app.get("/api/users/test-connection", (req: Request, res: Response) => {
     message: "API connection successful",
     serverTime: new Date().toISOString(),
   });
+});
+
+// Add a test endpoint to check connection status
+app.get("/api/connection-test", async (req: Request, res: Response) => {
+  try {
+    const ipInfo = await getOutgoingIpAddress();
+    // const client = await connectToDatabase();
+    res.status(200).json({
+      status: "success",
+      message: "Connection to MongoDB successful",
+      serverInfo: {
+        functionIp: ipInfo,
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || "development",
+      },
+    });
+  } catch (error) {
+    logger.error("Connection test failed:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to connect to MongoDB",
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 });
 
 // Posts endpoints
@@ -382,28 +450,61 @@ app.post("/api/events", async (req: Request, res: Response) => {
   }
 });
 
-// Export the API to Firebase Functions
-export const api = onRequest({
-  timeoutSeconds: 540,
-  memory: "256MiB",
-  cors: true,
-}, app);
-
 // Add a startup function to verify schemas are loaded
-export const verifySchemas = onRequest({
-  timeoutSeconds: 60,
-  memory: "256MiB",
-  cors: true,
-}, async (req, res) => {
+app.get("/api/verify-schemas", async (req: Request, res: Response) => {
   try {
-    // const client = await connectToDatabase();
+    logger.info("Verifying database connection and schemas");
+    const ipInfo = await getOutgoingIpAddress();
+    await connectToDatabase();
     res.status(200).json({
-      status: "ok",
-      message: "Schemas loaded successfully",
-      schemasLoaded,
+      status: "success",
+      message: "Database connection and schemas verified",
+      connectionInfo: {
+        sourceIp: ipInfo,
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
-    logger.error("Schema verification error:", error);
-    res.status(500).json({error: "Failed to verify schemas"});
+    logger.error("Schema verification failed:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to verify schemas",
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 });
+
+export const api = onRequest({
+  cors: true,
+  memory: "256MiB",
+  timeoutSeconds: 540,
+}, app);
+
+// export const verifySchemas = onRequest({
+//   cors: true,
+//   memory: "256MiB",
+//   timeoutSeconds: 60,
+// }, async (req, res) => {
+//   try {
+//     logger.info("Verifying database connection and schemas");
+//     const ipInfo = await getOutgoingIpAddress();
+//     await connectToDatabase();
+//     res.status(200).json({
+//       status: "success",
+//       message: "Database connection and schemas verified",
+//       schemasLoaded,
+//       schemas: Object.keys(schemas),
+//       connectionInfo: {
+//         sourceIp: ipInfo,
+//         timestamp: new Date().toISOString(),
+//       },
+//     });
+//   } catch (error) {
+//     logger.error("Schema verification error:", error);
+//     res.status(500).json({
+//       status: "error",
+//       message: "Failed to verify schemas",
+//       error: error instanceof Error ? error.message : String(error),
+//     });
+//   }
+// });

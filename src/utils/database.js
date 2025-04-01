@@ -1,379 +1,386 @@
 import * as SQLite from 'expo-sqlite';
+import * as FileSystem from 'expo-file-system';
 
-// Open the database with the correct API for the current expo-sqlite version
+// Database reference - will be initialized asynchronously
 let db = null;
+let dbInitPromise = null;
 
-// Detect and use the appropriate SQLite API
-try {
-  // For expo-sqlite version 11.0.0 and later (async version)
-  if (SQLite.openDatabaseAsync) {
-    // We need to handle this asynchronously
-    console.log('Using SQLite.openDatabaseAsync API (newer version)');
-    
-    // Initialize a temporary object until async initialization completes
-    db = {
-      _isInitializing: true,
-      transaction: function() {
-        console.error('Database still initializing, please wait');
-        return Promise.reject(new Error('Database still initializing'));
+// Initialize the database with the new async API
+export const initDatabase = async () => {
+  // Return existing db if already initialized
+  if (db !== null) return db;
+  
+  // Return in-progress initialization if one exists
+  if (dbInitPromise !== null) return dbInitPromise;
+  
+  // Start initialization process
+  dbInitPromise = (async () => {
+    try {
+      console.log('Initializing database with Expo SDK 52 SQLite API');
+      
+      // Ensure directory exists (required in SDK 52)
+      const dbDir = `${FileSystem.documentDirectory}SQLite`;
+      const dirInfo = await FileSystem.getInfoAsync(dbDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(dbDir, { intermediates: true });
       }
-    };
-    
-    // Start async initialization
-    (async () => {
-      try {
-        const realDb = await SQLite.openDatabaseAsync('neighborly.db');
+      
+      // Open the database with new async API
+      const database = await SQLite.openDatabaseAsync('neighborly.db');
+      console.log('SQLite database opened successfully');
+      
+      // Create wrapper with compatibility layer for old transaction API
+      db = {
+        _db: database,
         
-        // When initialization completes, replace our temporary object with the real one
-        if (realDb && typeof realDb.transactionAsync === 'function') {
-          // For newer versions using transactionAsync
-          db = {
-            transaction: (callback, errorCallback, successCallback) => {
-              realDb.transactionAsync(async (tx) => {
-                return callback(tx);
-              })
-              .then(() => successCallback && successCallback())
-              .catch((error) => errorCallback && errorCallback(error));
-            },
-            // Expose the original async methods too
-            transactionAsync: realDb.transactionAsync.bind(realDb),
-            _rawDatabase: realDb
+        // Compatibility layer for transaction API
+        transaction: (callback, errorCallback, successCallback) => {
+          (async () => {
+            try {
+              // Begin db operation
+              const tx = {
+                executeSql: async (sqlStatement, args = [], successCb = null, errorCb = null) => {
+                  try {
+                    // Run SQL with new API
+                    if (sqlStatement.toLowerCase().startsWith('select')) {
+                      // For SELECT queries
+                      const result = await database.getAllAsync(sqlStatement, args);
+                      // Format result to match old API
+                      const rows = {
+                        length: result.length,
+                        item: (i) => result[i],
+                        _array: result
+                      };
+                      
+                      if (successCb) successCb(tx, { rows });
+                      return { rows };
+                    } else {
+                      // For non-SELECT queries
+                      const result = await database.execAsync(sqlStatement, args);
+                      
+                      if (successCb) successCb(tx, result);
+                      return result;
+                    }
+                  } catch (error) {
+                    console.error(`SQL Error: ${sqlStatement}`, error);
+                    if (errorCb) errorCb(tx, error);
+                    throw error;
+                  }
+                }
+              };
+              
+              // Execute the transaction callback
+              await callback(tx);
+              
+              // Call success callback
+              if (successCallback) successCallback();
+            } catch (error) {
+              console.error('Transaction error:', error);
+              if (errorCallback) errorCallback(error);
+            }
+          })();
+          
+          // Return pseudo-transaction object for compatibility
+          return {
+            executeSql: () => console.warn('Cannot call executeSql outside of transaction callback')
           };
-          console.log('Database initialized successfully with transactionAsync');
-        } else if (realDb && typeof realDb.transaction === 'function') {
-          // If it has a direct transaction method
-          db = realDb;
-          console.log('Database initialized successfully with direct transaction');
-        } else {
-          console.error('Opened database does not have transaction methods');
-          throw new Error('Incompatible SQLite implementation');
-        }
+        },
         
-        // Initialize tables once we have a working db
-        initializeTables().catch(err => console.error('Failed to initialize tables:', err));
-      } catch (error) {
-        console.error('Async database initialization failed:', error);
-        setupMockDatabase();
-      }
-    })();
-  }
-  // For expo-sqlite before version 11 (sync version)
-  else if (SQLite.openDatabase) {
-    db = SQLite.openDatabase('neighborly.db');
-    console.log('SQLite database opened with SQLite.openDatabase');
-    
-    // Verify db was properly initialized
-    if (!db || typeof db.transaction !== 'function') {
-      throw new Error('Database initialization failed: transaction method not available');
+        // Expose native methods
+        rawExecAsync: (sql, params) => database.execAsync(sql, params),
+        rawGetAllAsync: (sql, params) => database.getAllAsync(sql, params)
+      };
+      
+      // Initialize tables
+      await initializeTables();
+      console.log('Database initialized successfully');
+      
+      return db;
+    } catch (error) {
+      console.error('Error initializing database:', error);
+      setupMockDatabase();
+      return db;
+    } finally {
+      // Clear the promise after completion (success or failure)
+      dbInitPromise = null;
     }
-    
-    // Initialize tables immediately for sync version
-    initializeTables().catch(err => console.error('Failed to initialize tables:', err));
-  } 
-  // Other possible APIs
-  else if (SQLite.createDatabase) {
-    db = SQLite.createDatabase('neighborly.db');
-    console.log('SQLite database opened with createDatabase');
-    
-    if (!db || typeof db.transaction !== 'function') {
-      throw new Error('Database initialization failed: transaction method not available');
-    }
-    
-    initializeTables().catch(err => console.error('Failed to initialize tables:', err));
-  } 
-  // Fallback approaches
-  else if (SQLite.default) {
-    // Handle cases where the default export is the function
-    if (typeof SQLite.default === 'function') {
-      db = SQLite.default('neighborly.db');
-      console.log('SQLite database opened with SQLite.default as a function');
-    } else if (SQLite.default.openDatabase) {
-      db = SQLite.default.openDatabase('neighborly.db');
-      console.log('SQLite database opened with SQLite.default.openDatabase');
-    }
-    
-    if (!db || typeof db.transaction !== 'function') {
-      throw new Error('Database initialization failed: transaction method not available');
-    }
-    
-    initializeTables().catch(err => console.error('Failed to initialize tables:', err));
-  } else {
-    throw new Error('No compatible SQLite API found');
-  }
-} catch (error) {
-  console.error('Error opening SQLite database:', error);
-  setupMockDatabase();
-}
+  })();
+  
+  return dbInitPromise;
+};
 
+// Mock database for fallback
 function setupMockDatabase() {
   console.warn('Setting up mock database - storage functionality will be limited');
-  // Create a mock DB object to prevent app crashes
   db = {
     transaction: (callback, errorCallback, successCallback) => {
       console.warn('Using mock database - storage functionality is disabled');
-      // Mock transaction that does nothing but successfully resolves
-      setTimeout(() => successCallback && successCallback(), 0);
-      return Promise.resolve({
-        executeSql: () => Promise.resolve({ rows: { length: 0, item: () => null } })
-      });
-    }
+      
+      // Create mock transaction object
+      const tx = {
+        executeSql: (_, __, successCb) => {
+          if (successCb) {
+            successCb(tx, { rows: { length: 0, item: () => null, _array: [] } });
+          }
+          return Promise.resolve({ rows: { length: 0, item: () => null, _array: [] } });
+        }
+      };
+      
+      // Execute callback with mock tx
+      setTimeout(() => {
+        try {
+          callback(tx);
+          if (successCallback) successCallback();
+        } catch (e) {
+          if (errorCallback) errorCallback(e);
+        }
+      }, 0);
+      
+      return {
+        executeSql: () => console.warn('Cannot call executeSql outside of transaction callback')
+      };
+    },
+    rawExecAsync: () => Promise.resolve({ rowsAffected: 0 }),
+    rawGetAllAsync: () => Promise.resolve([])
   };
 }
 
-// Separate function to initialize database tables
-function initializeTables() {
+// Initialize tables with the compatibility layer
+async function initializeTables() {
   return new Promise((resolve, reject) => {
-    try {
-      if (!db || typeof db.transaction !== 'function') {
-        console.error('Database not properly initialized for table creation');
-        reject(new Error('Database not properly initialized'));
-        return;
-      }
-
-      db.transaction(tx => {
-        // Create user preferences table
-        tx.executeSql(
-          `CREATE TABLE IF NOT EXISTS preferences (
-            id INTEGER PRIMARY KEY NOT NULL,
-            key TEXT NOT NULL UNIQUE,
-            value TEXT NOT NULL
-          );`
-        );
-        
-        // Create cache table for posts
-        tx.executeSql(
-          `CREATE TABLE IF NOT EXISTS posts_cache (
-            id TEXT PRIMARY KEY NOT NULL,
-            data TEXT NOT NULL,
-            timestamp INTEGER NOT NULL
-          );`
-        );
-        
-        // Create draft posts table
-        tx.executeSql(
-          `CREATE TABLE IF NOT EXISTS draft_posts (
-            id TEXT PRIMARY KEY NOT NULL,
-            data TEXT NOT NULL,
-            timestamp INTEGER NOT NULL
-          );`
-        );
-      }, (error) => {
-        console.error('Database transaction error:', error);
-        reject(error);
-      }, () => {
-        console.log('Database tables initialized successfully');
-        resolve();
-      });
-    } catch (error) {
-      console.error('Database initialization error:', error);
-      reject(error);
+    if (!db) {
+      reject(new Error('Database not initialized'));
+      return;
     }
+    
+    db.transaction(tx => {
+      // Create user preferences table
+      tx.executeSql(
+        `CREATE TABLE IF NOT EXISTS preferences (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          key TEXT NOT NULL UNIQUE,
+          value TEXT NOT NULL
+        );`
+      );
+      
+      // Create cache table for posts
+      tx.executeSql(
+        `CREATE TABLE IF NOT EXISTS posts_cache (
+          id TEXT PRIMARY KEY NOT NULL,
+          data TEXT NOT NULL,
+          timestamp INTEGER NOT NULL
+        );`
+      );
+      
+      // Create draft posts table
+      tx.executeSql(
+        `CREATE TABLE IF NOT EXISTS draft_posts (
+          id TEXT PRIMARY KEY NOT NULL,
+          data TEXT NOT NULL,
+          timestamp INTEGER NOT NULL
+        );`
+      );
+    }, reject, resolve);
   });
 }
 
-// Initialize the database - exposed for external calls if needed
-export const initDatabase = () => {
-  return new Promise((resolve, reject) => {
-    // If we're using the async API and still initializing, wait a bit
-    if (db && db._isInitializing) {
-      console.log('Database is still initializing, waiting...');
-      setTimeout(() => initDatabase().then(resolve).catch(reject), 500);
-      return;
-    }
-    
-    try {
-      if (!db || typeof db.transaction !== 'function') {
-        console.error('Database not properly initialized');
-        reject(new Error('Database not properly initialized'));
-        return;
-      }
-
-      // We have a valid db object, so just initialize tables
-      initializeTables().then(resolve).catch(reject);
-    } catch (error) {
-      console.error('Database initialization failed:', error);
-      reject(error);
-    }
-  });
-};
-
-// The rest of your database functions remain unchanged
-
+// Keep existing database functions but make them async
 // Set a preference
-export const setPreference = (key, value) => {
-  return new Promise((resolve, reject) => {
-    if (!db || typeof db.transaction !== 'function') {
-      console.warn('Database not available for setting preference');
-      reject(new Error('Database not available'));
-      return;
-    }
+export const setPreference = async (key, value) => {
+  try {
+    const database = await initDatabase();
     
-    db.transaction(tx => {
-      tx.executeSql(
-        'INSERT OR REPLACE INTO preferences (key, value) VALUES (?, ?)',
-        [key, JSON.stringify(value)],
-        (_, result) => resolve(result),
-        (_, error) => reject(error)
-      );
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          'INSERT OR REPLACE INTO preferences (key, value) VALUES (?, ?)',
+          [key, JSON.stringify(value)],
+          (_, result) => resolve(result),
+          (_, error) => reject(error)
+        );
+      });
     });
-  });
+  } catch (error) {
+    console.error('Error setting preference:', error);
+    throw error;
+  }
 };
 
 // Get a preference
-export const getPreference = (key) => {
-  return new Promise((resolve, reject) => {
-    if (!db || typeof db.transaction !== 'function') {
-      console.warn('Database not available for getting preference');
-      reject(new Error('Database not available'));
-      return;
-    }
-
-    db.transaction(tx => {
-      tx.executeSql(
-        'SELECT value FROM preferences WHERE key = ?',
-        [key],
-        (_, { rows }) => {
-          if (rows.length > 0) {
-            try {
-              resolve(JSON.parse(rows.item(0).value));
-            } catch (e) {
-              console.error('Error parsing preference:', e);
+export const getPreference = async (key) => {
+  try {
+    const database = await initDatabase();
+    
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          'SELECT value FROM preferences WHERE key = ?',
+          [key],
+          (_, { rows }) => {
+            if (rows.length > 0) {
+              try {
+                resolve(JSON.parse(rows.item(0).value));
+              } catch (e) {
+                console.error('Error parsing preference:', e);
+                resolve(null);
+              }
+            } else {
               resolve(null);
             }
-          } else {
-            resolve(null);
-          }
-        },
-        (_, error) => reject(error)
-      );
+          },
+          (_, error) => reject(error)
+        );
+      });
     });
-  });
+  } catch (error) {
+    console.error('Error getting preference:', error);
+    return null;
+  }
 };
 
 // Cache posts
-export const cachePosts = (posts) => {
-  return new Promise((resolve, reject) => {
-    if (!db || typeof db.transaction !== 'function') {
-      console.warn('Database not available for caching posts');
-      reject(new Error('Database not available'));
-      return;
-    }
-
-    const now = Date.now();
+export const cachePosts = async (posts) => {
+  try {
+    const database = await initDatabase();
     
-    db.transaction(tx => {
-      posts.forEach(post => {
-        tx.executeSql(
-          'INSERT OR REPLACE INTO posts_cache (id, data, timestamp) VALUES (?, ?, ?)',
-          [post.id, JSON.stringify(post), now],
-          null,
-          (_, error) => console.error('Error caching post:', error)
-        );
-      });
-    }, reject, () => resolve());
-  });
+    return new Promise((resolve, reject) => {
+      const now = Date.now();
+      
+      database.transaction(tx => {
+        posts.forEach(post => {
+          tx.executeSql(
+            'INSERT OR REPLACE INTO posts_cache (id, data, timestamp) VALUES (?, ?, ?)',
+            [post.id, JSON.stringify(post), now],
+            null,
+            (_, error) => console.error('Error caching post:', error)
+          );
+        });
+      }, reject, () => resolve());
+    });
+  } catch (error) {
+    console.error('Error caching posts:', error);
+    throw error;
+  }
 };
 
 // Get cached posts
-export const getCachedPosts = () => {
-  return new Promise((resolve, reject) => {
-    if (!db || typeof db.transaction !== 'function') {
-      console.warn('Database not available for retrieving cached posts');
-      reject(new Error('Database not available'));
-      return;
-    }
-
-    db.transaction(tx => {
-      tx.executeSql(
-        'SELECT * FROM posts_cache ORDER BY timestamp DESC LIMIT 50',
-        [],
-        (_, { rows }) => {
-          const posts = [];
-          for (let i = 0; i < rows.length; i++) {
-            try {
-              posts.push(JSON.parse(rows.item(i).data));
-            } catch (e) {
-              console.error('Error parsing cached post:', e);
+export const getCachedPosts = async () => {
+  try {
+    const database = await initDatabase();
+    
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          'SELECT * FROM posts_cache ORDER BY timestamp DESC LIMIT 50',
+          [],
+          (_, { rows }) => {
+            const posts = [];
+            for (let i = 0; i < rows.length; i++) {
+              try {
+                posts.push(JSON.parse(rows.item(i).data));
+              } catch (e) {
+                console.error('Error parsing cached post:', e);
+              }
             }
-          }
-          resolve(posts);
-        },
-        (_, error) => reject(error)
-      );
+            resolve(posts);
+          },
+          (_, error) => reject(error)
+        );
+      });
     });
-  });
+  } catch (error) {
+    console.error('Error getting cached posts:', error);
+    return [];
+  }
 };
 
 // Save draft post
-export const saveDraftPost = (post) => {
-  return new Promise((resolve, reject) => {
-    if (!db || typeof db.transaction !== 'function') {
-      console.warn('Database not available for saving draft post');
-      reject(new Error('Database not available'));
-      return;
-    }
-
-    const now = Date.now();
-    const id = post.id || `draft_${now}`;
-    db.transaction(tx => {
-      tx.executeSql(
-        'INSERT OR REPLACE INTO draft_posts (id, data, timestamp) VALUES (?, ?, ?)',
-        [id, JSON.stringify(post), now],
-        (_, result) => resolve({ ...post, id }),
-        (_, error) => reject(error)
-      );
+export const saveDraftPost = async (post) => {
+  try {
+    const database = await initDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const now = Date.now();
+      const id = post.id || `draft_${now}`;
+      database.transaction(tx => {
+        tx.executeSql(
+          'INSERT OR REPLACE INTO draft_posts (id, data, timestamp) VALUES (?, ?, ?)',
+          [id, JSON.stringify(post), now],
+          (_, result) => resolve({ ...post, id }),
+          (_, error) => reject(error)
+        );
+      });
     });
-  });
+  } catch (error) {
+    console.error('Error saving draft post:', error);
+    throw error;
+  }
 };
 
 // Get all draft posts
-export const getDraftPosts = () => {
-  return new Promise((resolve, reject) => {
-    if (!db || typeof db.transaction !== 'function') {
-      console.warn('Database not available for retrieving draft posts');
-      reject(new Error('Database not available'));
-      return;
-    }
-
-    db.transaction(tx => {
-      tx.executeSql(
-        'SELECT * FROM draft_posts ORDER BY timestamp DESC',
-        [],
-        (_, { rows }) => {
-          const posts = [];
-          for (let i = 0; i < rows.length; i++) {
-            try {
-              posts.push(JSON.parse(rows.item(i).data));
-            } catch (e) {
-              console.error('Error parsing draft post:', e);
+export const getDraftPosts = async () => {
+  try {
+    const database = await initDatabase();
+    
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          'SELECT * FROM draft_posts ORDER BY timestamp DESC',
+          [],
+          (_, { rows }) => {
+            const posts = [];
+            for (let i = 0; i < rows.length; i++) {
+              try {
+                posts.push(JSON.parse(rows.item(i).data));
+              } catch (e) {
+                console.error('Error parsing draft post:', e);
+              }
             }
-          }
-          resolve(posts);
-        },
-        (_, error) => reject(error)
-      );
+            resolve(posts);
+          },
+          (_, error) => reject(error)
+        );
+      });
     });
-  });
+  } catch (error) {
+    console.error('Error getting draft posts:', error);
+    return [];
+  }
 };
 
 // Delete draft post
-export const deleteDraftPost = (id) => {
-  return new Promise((resolve, reject) => {
-    if (!db || typeof db.transaction !== 'function') {
-      console.warn('Database not available for deleting draft post');
-      reject(new Error('Database not available'));
-      return;
-    }
+export const deleteDraftPost = async (id) => {
+  try {
+    const database = await initDatabase();
     
-    db.transaction(tx => {
-      tx.executeSql(
-        'DELETE FROM draft_posts WHERE id = ?',
-        [id],
-        (_, result) => resolve(result),
-        (_, error) => reject(error)
-      );
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          'DELETE FROM draft_posts WHERE id = ?',
+          [id],
+          (_, result) => resolve(result),
+          (_, error) => reject(error)
+        );
+      });
     });
-  });
+  } catch (error) {
+    console.error('Error deleting draft post:', error);
+    throw error;
+  }
 };
 
-export default db;
+// Make sure to init the database on import
+initDatabase().catch(error => 
+  console.error('Failed to initialize database on import:', error)
+);
+
+export default {
+  initDatabase,
+  setPreference,
+  getPreference,
+  cachePosts,
+  getCachedPosts,
+  saveDraftPost,
+  getDraftPosts,
+  deleteDraftPost
+};
