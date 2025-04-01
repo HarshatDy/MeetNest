@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "reactexpo-neighborly"
+location: "us-central1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "fdcdb"
+      cloudSql:
+        instanceId: "reactexpo-neighborly-fdc"
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./connector"]

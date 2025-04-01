@@ -2,8 +2,8 @@
  * Simple logging utility for debugging purposes
  */
 
-// Set to true to enable debug logging
-const DEBUG_ENABLED = true;
+// Set to false to disable debug logging
+const DEBUG_ENABLED = false;
 
 export const Logger = {
   /**

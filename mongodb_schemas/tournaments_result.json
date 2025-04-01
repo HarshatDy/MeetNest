@@ -1,0 +1,37 @@
+{
+    "title": "TournamentResult",
+    "bsonType": "object",
+    "required": ["_id", "tournamentId", "participants", "results"],
+    "properties": {
+      "_id": {
+        "bsonType": "objectId"
+      },
+      "tournamentId": {
+        "bsonType": "string"
+      },
+      "participants": {
+        "bsonType": "array",
+        "items": {
+          "bsonType": "object",
+          "properties": {
+            "id": { "bsonType": "string" },
+            "name": { "bsonType": "string" },
+            "societyId": { "bsonType": "string" }
+          }
+        }
+      },
+      "results": {
+        "bsonType": "object",
+        "properties": {
+          "winner": { "bsonType": "string" },
+          "runnerUp": { "bsonType": "string" },
+          "matches": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object"
+            }
+          }
+        }
+      }
+    }
+  }

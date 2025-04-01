@@ -1,0 +1,94 @@
+Here's a full-proof design defining all actions for each user type in Neighborly, categorized under creation, request, participation, and other actions. I've also marked actions not yet implemented (🔹) for future enhancements.
+
+User Roles & Actions in Neighborly
+1. President (Community Leader)
+Primary Role: Manages society, oversees events, and ensures smooth platform operations.
+Creation Actions:
+✔️ Create posts (text, images, activities).
+ ✔️ Create & manage events (inter-society & local).
+ ✔️ Create & manage tournaments.
+ ✔️ Update society rules and policies.
+Request Actions:
+✔️ Approve/Reject event requests.
+ ✔️ Approve/Reject tournament entries.
+ ✔️ Review and act on community complaints (🔹).
+Participation Actions:
+✔️ Join & participate in tournaments.
+ ✔️ RSVP & attend events.
+ ✔️ Interact with posts (like, comment, share).
+ ✔️ Challenge members in an activity.
+Other Actions:
+✔️ Manage community members (approve, remove).
+ ✔️ Oversee finances (with Treasurer).
+ ✔️ Moderate content (🔹).
+
+2. Treasurer (Finance Manager)
+Primary Role: Handles financial transactions and community expenses.
+Creation Actions:
+✔️ Create financial reports (🔹).
+ ✔️ Post updates about community funds (🔹).
+Request Actions:
+✔️ Approve/Reject funding requests for events (🔹).
+ ✔️ Request member payments (🔹).
+Participation Actions:
+✔️ Join tournaments.
+ ✔️ RSVP & attend events.
+ ✔️ Interact with posts.
+Other Actions:
+✔️ Manage financial records (🔹).
+ ✔️ Collaborate with President on budgets.
+
+3. Member (Permanent Society Resident)
+Primary Role: Actively engages in events, tournaments, and discussions.
+Creation Actions:
+✔️ Create posts.
+ ✔️ Challenge another member for an activity.
+Request Actions:
+✔️ Request to join tournaments.
+ ✔️ Request to host an event (🔹).
+ ✔️ Report inappropriate content (🔹).
+Participation Actions:
+✔️ Join tournaments.
+ ✔️ RSVP & attend events.
+ ✔️ Like, comment, share posts.
+ ✔️ Accept challenges from others.
+Other Actions:
+✔️ Update personal profile.
+ ✔️ Earn achievements based on activity (🔹).
+
+4. Tenant (Temporary Resident)
+Primary Role: Limited privileges compared to permanent members but can participate in social activities.
+Creation Actions:
+✔️ Create posts.
+ ✔️ Challenge a friend for an activity.
+Request Actions:
+✔️ Request to join tournaments.
+ ✔️ Request to RSVP for events.
+Participation Actions:
+✔️ Join tournaments.
+ ✔️ RSVP & attend events.
+ ✔️ Like, comment, share posts.
+ ✔️ Accept challenges.
+Other Actions:
+✔️ Update personal profile.
+ ✔️ Limited access to community discussions.
+
+Additional System-Wide Features (🔹 Future Enhancements)
+Real-time Chat: Direct messaging & group discussions.
+
+
+Push Notifications: Alerts for events, tournaments, and community updates.
+
+
+Polls & Voting System: Allowing community decisions via voting.
+
+
+Event Live Discussion Forum: For planning and collaboration.
+
+
+Automated Moderation: AI-based spam & abuse detection.
+
+
+
+This structure ensures clear role-based access, scalability, and future-proofing for additional functionalities. Let me know if you'd like refinements! 🚀
+

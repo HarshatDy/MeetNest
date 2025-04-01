@@ -14,7 +14,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
-import { TimelineContext } from '../context/TimelineContext';
+// Fix: Update the import path to match the correct location
+import { TimelineContext } from '../contexts/TimelineContext';
+// Add Logger for consistency with other components
+import { Logger } from '../utils/Logger';
 
 export default function PostingScreen() {
   const [postText, setPostText] = useState('');
@@ -25,21 +28,43 @@ export default function PostingScreen() {
   
   const navigation = useNavigation();
   
-  const { addPost } = useContext(TimelineContext);
-
+  // Fix: Add a fallback for when context is not available
+  const timelineContext = useContext(TimelineContext);
+  
+  // Add a safe function to add posts that won't crash if context is missing
   const addPostToTimeline = (post) => {
-    addPost(post);
+    // Log the context state for debugging
+    Logger.debug('PostingScreen', 'Adding post to timeline', { 
+      hasContext: !!timelineContext,
+      postId: post.id
+    });
     
-    // Fix navigation - "Local" is the actual screen name, not "LocalTimeline"
-    // Based on TimelineNavigator.js, screens are named "Local" and "Global"
+    // Only call addPost if the context exists
+    if (timelineContext && timelineContext.addPost) {
+      timelineContext.addPost(post);
+    } else {
+      // Log the error and show a user-friendly message
+      Logger.error('PostingScreen', 'TimelineContext not available');
+      Alert.alert(
+        'Error',
+        'Unable to post at this time. Please try again later.',
+        [{ text: 'OK' }]
+      );
+      setIsPosting(false);
+      return false;
+    }
+    
+    // Navigate to the timeline screen
     navigation.navigate('Timeline', {
       screen: 'Local', 
       params: { 
         newPost: post, 
         postStatus: 'uploading',
-        refresh: Date.now() // Add refresh parameter to force update
+        refresh: Date.now()
       }
     });
+    
+    return true;
   };
 
   const pickImage = async () => {
@@ -89,19 +114,18 @@ export default function PostingScreen() {
         status: 'uploading' // Add status for tracking in timeline
       };
       
-      // Add the post to the timeline
-      addPostToTimeline(newPost);
+      // Add the post to the timeline and check success
+      const success = addPostToTimeline(newPost);
       
-      // Reset form
-      setPostText('');
-      setSelectedImage(null);
-      setActivity('');
-      setChallengeEnabled(false);
-      
-      // Navigate to LocalTimeline without showing alert
-      // Alert is removed as we're showing status in the timeline
+      if (success) {
+        // Reset form only on success
+        setPostText('');
+        setSelectedImage(null);
+        setActivity('');
+        setChallengeEnabled(false);
+      }
     } catch (error) {
-      console.error('Error creating post:', error);
+      Logger.error('PostingScreen', 'Error creating post', { error: error.message });
       Alert.alert('Error', 'Failed to create post. Please try again.');
     } finally {
       // Reset posting status

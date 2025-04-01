@@ -1,0 +1,35 @@
+{
+    "title": "User",
+    "bsonType": "object",
+    "required": ["_id", "email", "societies"],
+    "properties": {
+      "_id": {
+        "bsonType": "string"
+      },
+      "email": {
+        "bsonType": "string"
+      },
+      "displayName": {
+        "bsonType": "string"
+      },
+      "societies": {
+        "bsonType": "array",
+        "items": {
+          "bsonType": "string"
+        }
+      },
+      "points": {
+        "bsonType": "int"
+      },
+      "achievements": {
+        "bsonType": "array",
+        "items": {
+          "bsonType": "object",
+          "properties": {
+            "id": { "bsonType": "string" },
+            "dateUnlocked": { "bsonType": "date" }
+          }
+        }
+      }
+    }
+  }

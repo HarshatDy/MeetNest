@@ -30,6 +30,9 @@
     "experiments": {
       "safeAreaInsets": true
     },
-    "newArchEnabled": true
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-sqlite"
+    ]
   }
 }
