@@ -114,6 +114,22 @@ export async function createUser(userData) {
   return apiRequest('/api/users', 'POST', userData);
 }
 
+export async function updateUser(userId, userData) {
+  return apiRequest(`/api/users/${userId}`, 'PUT', userData);
+}
+
+export async function deleteUser(userId) {
+  return apiRequest(`/api/users/${userId}`, 'DELETE');
+}
+
+export async function loginUser(credentials) {
+  return apiRequest('/api/users/login', 'POST', credentials);
+}
+
+export async function verifyUserEmail(userId, verificationCode) {
+  return apiRequest('/api/users/verify-email', 'POST', { userId, verificationCode });
+}
+
 // Posts endpoints
 export async function getPosts(societyId = 'default', limit = 20) {
   return apiRequest(`/api/posts?societyId=${societyId}&limit=${limit}`);
@@ -167,6 +183,10 @@ export async function testConnection() {
 export default {
   getUser,
   createUser,
+  updateUser,
+  deleteUser,
+  loginUser,
+  verifyUserEmail,
   getPosts,
   createPost,
   getTournaments,
