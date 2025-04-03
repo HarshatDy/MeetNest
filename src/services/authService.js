@@ -6,7 +6,9 @@ import {
   syncUserWithMongoDB,
   getCompleteUserData,
   setPreference,
-  getPreference
+  getPreference,
+  updateUserLoginStatus,
+  isUserLoggedIn
 } from '../utils/database';
 
 // Register a new user
@@ -52,7 +54,8 @@ export async function registerUser(userData) {
 // Complete registration with OTP verification
 export async function verifyRegistration(userId, otp) {
   try {
-    const result = await verifyOTP(userId, otp);
+    // Pass true to indicate this is a registration OTP verification
+    const result = await verifyOTP(userId, otp, true);
     
     if (result.success) {
       // Store auth state
@@ -85,6 +88,15 @@ export async function login(email, password) {
       };
     }
     
+    // Special handling for demo login without user creation
+    if (result.isDemoLogin) {
+      return {
+        success: false,
+        isDemoLogin: true,
+        message: result.message
+      };
+    }
+    
     if (result.success === false) {
       return result;
     }
@@ -107,26 +119,30 @@ export async function login(email, password) {
 export async function verifyLogin(userId, otp) {
   try {
     console.log(`[authService][verifyLogin] Verifying login OTP for user: ${userId}`);
-    const result = await verifyOTP(userId, otp);
+    // Pass false to indicate this is a login OTP verification, not registration
+    const result = await verifyOTP(userId, otp, false);
     
     if (result.success) {
       console.log(`[authService][verifyLogin] OTP verification successful for: ${userId}`);
-      // Store auth state
-      console.log(`[authService][verifyLogin] Setting isLoggedIn to 'true'`);
-      await setPreference('isLoggedIn', 'true');
-      console.log(`[authService][verifyLogin] Setting currentUserId to: ${userId}`);
+      
+      // Skip updating login status here since verifyOTP now handles it for login
+      // Just store userId in preferences for quick lookup
       await setPreference('currentUserId', userId);
       
-      // Verify the preferences were set correctly
-      const verifyLoginStatus = await getPreference('isLoggedIn');
-      const verifyUserId = await getPreference('currentUserId');
-      console.log(`[authService][verifyLogin] Verified preferences - isLoggedIn: ${verifyLoginStatus}, userId: ${verifyUserId}`);
+      // Verify the database was updated correctly
+      const isLoggedIn = await isUserLoggedIn();
+      console.log(`[authService][verifyLogin] Verified database login status: ${isLoggedIn}`);
       
       // Try to sync with MongoDB
       console.log(`[authService][verifyLogin] Attempting to sync with MongoDB for user: ${userId}`);
       syncUserWithMongoDB(userId).catch(error => {
         console.warn('[authService][verifyLogin] Background sync failed:', error);
       });
+      
+      return {
+        success: true,
+        message: 'Login successful'
+      };
     } else {
       console.log(`[authService][verifyLogin] OTP verification failed for: ${userId} - ${result.message}`);
     }
@@ -145,15 +161,24 @@ export async function verifyLogin(userId, otp) {
 export async function logout() {
   try {
     console.log('[authService][logout] Logging out user');
-    console.log('[authService][logout] Setting isLoggedIn to false');
-    await setPreference('isLoggedIn', 'false');
+    
+    // Get current user ID for database update
+    const userId = await getPreference('currentUserId');
+    
+    // If we have a userId, update the database record
+    if (userId) {
+      // Update the is_logged_in status in the database
+      await updateUserLoginStatus(userId, false);
+      console.log(`[authService][logout] Updated user ${userId} login status in database to false`);
+    }
+    
+    // Clear currentUserId from preferences
     console.log('[authService][logout] Clearing currentUserId');
     await setPreference('currentUserId', '');
     
     // Verify the preferences were cleared correctly
-    const verifyLoginStatus = await getPreference('isLoggedIn');
     const verifyUserId = await getPreference('currentUserId');
-    console.log(`[authService][logout] Verified preferences - isLoggedIn: ${verifyLoginStatus}, userId: ${verifyUserId || 'empty'}`);
+    console.log(`[authService][logout] Verified preferences - userId: ${verifyUserId || 'empty'}`);
     
     return {
       success: true,
@@ -171,28 +196,27 @@ export async function logout() {
 // Get current user data
 export async function getCurrentUser() {
   try {
-    console.log('[authService][getCurrentUser] Checking if user is logged in');
-    const isLoggedIn = await getPreference('isLoggedIn');
-    console.log(`[authService][getCurrentUser] isLoggedIn from preferences: ${isLoggedIn}`);
+    console.log('[authService][getCurrentUser] Checking if user is logged in from database');
     
-    if (isLoggedIn !== 'true') {
+    // Replace preference check with database query
+    const isLoggedIn = await isUserLoggedIn();
+    console.log(`[authService][getCurrentUser] isLoggedIn from database: ${isLoggedIn}`);
+    
+    if (!isLoggedIn) {
       console.log('[authService][getCurrentUser] User is not logged in, returning null');
       return null;
     }
     
-    console.log('[authService][getCurrentUser] Getting currentUserId from preferences');
-    const userId = await getPreference('currentUserId');
-    console.log(`[authService][getCurrentUser] currentUserId from preferences: ${userId || 'not found'}`);
+    // Get the logged in user from the database
+    const { getCurrentUser: getDbCurrentUser } = require('../utils/database');
+    const userData = await getDbCurrentUser();
     
-    if (!userId) {
-      console.log('[authService][getCurrentUser] No userId found, returning null');
+    if (!userData) {
+      console.log('[authService][getCurrentUser] No user found in database, returning null');
       return null;
     }
     
-    console.log(`[authService][getCurrentUser] Fetching complete user data for userId: ${userId}`);
-    const userData = await getCompleteUserData(userId);
-    console.log(`[authService][getCurrentUser] User data fetched: ${userData ? 'success' : 'null'}`);
-    
+    console.log(`[authService][getCurrentUser] User data fetched: success`);
     return userData;
   } catch (error) {
     console.error('[authService][getCurrentUser] Error getting current user:', error);

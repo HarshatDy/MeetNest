@@ -130,6 +130,27 @@ export async function verifyUserEmail(userId, verificationCode) {
   return apiRequest('/api/users/verify-email', 'POST', { userId, verificationCode });
 }
 
+// New function to get all users
+export async function getAllUsers() {
+  try {
+    const response = await fetch('/api/users', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API GET /api/users failed: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('[apiClient][getAllUsers] Error fetching all users:', error);
+    throw error;
+  }
+}
+
 // Posts endpoints
 export async function getPosts(societyId = 'default', limit = 20) {
   return apiRequest(`/api/posts?societyId=${societyId}&limit=${limit}`);
@@ -194,5 +215,6 @@ export default {
   createTournamentResult,
   getLeaderboard,
   getEvents,
-  testConnection
+  testConnection,
+  getAllUsers
 };

@@ -4,11 +4,39 @@ import apiClient from './apiClient';
 // User operations
 export async function getUser(userId) {
   try {
+    // First list all users for debugging
+    console.log(`[mongoService][getUser] Attempting to get user with ID: ${userId}`);
+    
+    // Get all users first to debug what's available
+    const allUsers = await getAllUsers();
+    console.log(`[mongoService][getUser] All available users in MongoDB:`, 
+      allUsers.map(user => ({ _id: user._id, id: user.id, email: user.email })));
+    
+    // Check if user exists in the list with either _id or id matching
+    const userExists = allUsers.some(user => 
+      (user._id && user._id.toString() === userId) || 
+      (user.id && user.id.toString() === userId)
+    );
+    
+    console.log(`[mongoService][getUser] User ${userId} exists in MongoDB? ${userExists}`);
+    
+    // Proceed with the regular API call
     const response = await apiClient.getUser(userId);
     return response.user;
   } catch (error) {
     console.error('Error getting user:', error);
     throw error;
+  }
+}
+
+// New function to get all users from MongoDB
+export async function getAllUsers() {
+  try {
+    const response = await apiClient.getAllUsers();
+    return response.users || [];
+  } catch (error) {
+    console.error('[mongoService][getAllUsers] Error fetching all users:', error);
+    return []; // Return empty array instead of throwing
   }
 }
 
@@ -170,5 +198,6 @@ export default {
   calculateLeaderboard,
   createPost,
   getPosts,
-  getEvents
+  getEvents,
+  getAllUsers // Add the new function to exports
 };

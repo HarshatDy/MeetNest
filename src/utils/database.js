@@ -6,6 +6,9 @@ import { sendOTPEmail } from '../../utils/emailService';
 let db = null;
 let dbInitPromise = null;
 
+const DEBUG_SQL_ENABLED = false; // Add a flag to control SQL debug prints
+const DEBUG_GENERAL_ENABLED = false; // Add a flag to control general debug prints
+
 // Generate a random 4-digit OTP
 const generateOTP = () => {
   return Math.floor(1000 + Math.random() * 9000).toString();
@@ -14,15 +17,21 @@ const generateOTP = () => {
 // Helper function to get all table names
 const getAllTableNames = async (database) => {
   try {
-    console.log('[DEBUG] Fetching all table names');
+    if (DEBUG_GENERAL_ENABLED) {
+      console.log('[DEBUG] Fetching all table names');
+    }
     const result = await database.rawGetAllAsync(
       "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
       []
     );
-    console.log('[DEBUG] Tables in database:', result.map(row => row.name));
+    if (DEBUG_GENERAL_ENABLED) {
+      console.log('[DEBUG] Tables in database:', result.map(row => row.name));
+    }
     return result.map(row => row.name);
   } catch (error) {
-    console.error('[DEBUG] Error getting table names:', error);
+    if (DEBUG_GENERAL_ENABLED) {
+      console.error('[DEBUG] Error getting table names:', error);
+    }
     return [];
   }
 };
@@ -30,7 +39,9 @@ const getAllTableNames = async (database) => {
 // Dump all tables content for debugging
 const dumpAllTables = async (database) => {
   try {
-    console.log('====== DUMPING ALL DATABASE TABLES CONTENT ======');
+    if (DEBUG_GENERAL_ENABLED) {
+      console.log('====== DUMPING ALL DATABASE TABLES CONTENT ======');
+    }
     const tables = await getAllTableNames(database);
     
     // Log all tables content
@@ -38,9 +49,13 @@ const dumpAllTables = async (database) => {
       await logTableContents(table, database);
     }
     
-    console.log('====== DATABASE CONTENT DUMP COMPLETED ======');
+    if (DEBUG_GENERAL_ENABLED) {
+      console.log('====== DATABASE CONTENT DUMP COMPLETED ======');
+    }
   } catch (error) {
-    console.error('[DEBUG] Error dumping tables:', error);
+    if (DEBUG_GENERAL_ENABLED) {
+      console.error('[DEBUG] Error dumping tables:', error);
+    }
   }
 };
 
@@ -81,9 +96,11 @@ export const initDatabase = async () => {
                 executeSql: async (sqlStatement, args = [], successCb = null, errorCb = null) => {
                   try {
                     // Add detailed debug logging for all SQL operations
-                    console.log(`[SQL] Executing: ${sqlStatement}`);
-                    console.log(`[SQL] Parameters:`, args);
-                    console.log(`[SQL] Parameter types:`, args.map(arg => typeof arg));
+                    if (DEBUG_SQL_ENABLED) {
+                      console.log(`[SQL] Executing: ${sqlStatement}`);
+                      console.log(`[SQL] Parameters:`, args);
+                      console.log(`[SQL] Parameter types:`, args.map(arg => typeof arg));
+                    }
                     
                     // Check for null or undefined values and log warnings
                     const nullArgs = args.map((arg, idx) => arg === null || arg === undefined ? idx : null).filter(idx => idx !== null);
@@ -123,7 +140,9 @@ export const initDatabase = async () => {
                       });
                     }
                     
-                    console.log(`[SQL] Formatted SQL: ${formattedSql}`);
+                    if (DEBUG_SQL_ENABLED) {
+                      console.log(`[SQL] Formatted SQL: ${formattedSql}`);
+                    }
                     
                     // Run SQL with new API
                     if (sqlStatement.toLowerCase().startsWith('select')) {
@@ -140,16 +159,22 @@ export const initDatabase = async () => {
                       return { rows };
                     } else {
                       // For non-SELECT queries
-                      console.log(`[SQL] Executing non-SELECT query: ${formattedSql}`);
+                      if (DEBUG_SQL_ENABLED) {
+                        console.log(`[SQL] Executing non-SELECT query: ${formattedSql}`);
+                      }
                       const result = await database.execAsync(formattedSql, []);
-                      console.log(`[SQL] Query executed successfully`);
+                      if (DEBUG_SQL_ENABLED) {
+                        console.log(`[SQL] Query executed successfully`);
+                      }
                       
                       if (successCb) successCb(tx, result);
                       return result;
                     }
                   } catch (error) {
-                    console.error(`[SQL] Error executing: ${sqlStatement}`, error);
-                    console.error(`[SQL] Failed parameters:`, args);
+                    if (DEBUG_SQL_ENABLED) {
+                      console.error(`[SQL] Error executing: ${sqlStatement}`, error);
+                      console.error(`[SQL] Failed parameters:`, args);
+                    }
                     if (errorCb) errorCb(tx, error);
                     throw error;
                   }
@@ -203,7 +228,9 @@ export const initDatabase = async () => {
             });
           }
           
-          console.log(`[SQL] Direct execution: ${formattedSql}`);
+          if (DEBUG_SQL_ENABLED) {
+            console.log(`[SQL] Direct execution: ${formattedSql}`);
+          }
           return database.execAsync(formattedSql, []);
         },
         
@@ -236,7 +263,9 @@ export const initDatabase = async () => {
             });
           }
           
-          console.log(`[SQL] Direct query: ${formattedSql}`);
+          if (DEBUG_SQL_ENABLED) {
+            console.log(`[SQL] Direct query: ${formattedSql}`);
+          }
           return database.getAllAsync(formattedSql, []);
         }
       };
@@ -307,7 +336,7 @@ async function initializeTables() {
     }
     
     db.transaction(tx => {
-      // Create users table
+      // Create users table with isLoggedIn field
       tx.executeSql(
         `CREATE TABLE IF NOT EXISTS users (
           id TEXT PRIMARY KEY NOT NULL,
@@ -315,6 +344,7 @@ async function initializeTables() {
           display_name TEXT,
           password TEXT NOT NULL,
           society TEXT,
+          is_logged_in INTEGER DEFAULT 0,
           created_at INTEGER NOT NULL,
           updated_at INTEGER NOT NULL
         );`
@@ -366,13 +396,19 @@ async function initializeTables() {
 // Helper function to log table contents for debugging
 const logTableContents = async (tableName, db) => {
   try {
-    console.log(`[DEBUG] Logging contents of table: ${tableName}`);
+    if (DEBUG_GENERAL_ENABLED) {
+      console.log(`[DEBUG] Logging contents of table: ${tableName}`);
+    }
     const result = await db.rawGetAllAsync(`SELECT * FROM ${tableName} LIMIT 100`, []);
-    console.log(`[DEBUG] ${tableName} contents:`, result);
-    console.log(`[DEBUG] ${tableName} row count: ${result.length}`);
+    if (DEBUG_GENERAL_ENABLED) {
+      console.log(`[DEBUG] ${tableName} contents:`, result);
+      console.log(`[DEBUG] ${tableName} row count: ${result.length}`);
+    }
     return result;
   } catch (error) {
-    console.error(`[DEBUG] Error reading ${tableName} table:`, error);
+    if (DEBUG_GENERAL_ENABLED) {
+      console.error(`[DEBUG] Error reading ${tableName} table:`, error);
+    }
     return [];
   }
 };
@@ -683,14 +719,15 @@ export const insertUser = async (userData) => {
     return new Promise((resolve, reject) => {
       database.transaction(tx => {
         tx.executeSql(
-          `INSERT INTO users (id, email, display_name, password, society, created_at, updated_at) 
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO users (id, email, display_name, password, society, is_logged_in, created_at, updated_at) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             userData.id || 'user_' + Math.random().toString(36).substring(2, 9),
             userData.email,
             userData.displayName || userData.display_name || '',
             userData.password,
             userData.society || '',
+            userData.isLoggedIn || 0,  // Default to not logged in
             now,
             now
           ],
@@ -1089,7 +1126,7 @@ export const createUserAccount = async (userData) => {
 };
 
 // Verify OTP and finalize user account in both SQLite and MongoDB
-export const verifyOTP = async (userId, otp) => {
+export const verifyOTP = async (userId, otp, isRegistration = true) => {
   try {
     // Debug: log tables before verification
     const database = await initDatabase();
@@ -1100,71 +1137,123 @@ export const verifyOTP = async (userId, otp) => {
     const result = await verifyUserOTP(userId, otp);
     
     if (result.success) {
-      // Get pending user data
-      const pendingUserData = await getPreference(`pending_user_${userId}`);
-      
-      if (!pendingUserData) {
-        return {
-          success: false,
-          message: 'User registration data not found'
-        };
-      }
-      
-      const userData = JSON.parse(pendingUserData);
-      console.log(`[database][verifyOTP] Retrieved pending user data for: ${userId}`, userData);
-      
-      // Only now insert into local SQLite database after OTP verification
-      try {
-        const localResult = await insertUser({
-          id: userId,
-          email: userData.email,
-          display_name: userData.displayName,
-          password: userData.password,
-          society: userData.society,
-        });
-        console.log(`[database][verifyOTP] User inserted into local database: ${userId}`);
+      // If this is a registration process (not a login)
+      if (isRegistration) {
+        // Get pending user data for new registration
+        const pendingUserData = await getPreference(`pending_user_${userId}`);
         
-        // Insert into MongoDB via API
+        if (!pendingUserData) {
+          return {
+            success: false,
+            message: 'User registration data not found'
+          };
+        }
+        
+        const userData = JSON.parse(pendingUserData);
+        console.log(`[database][verifyOTP] Retrieved pending user data for: ${userId}`, userData);
+        
+        // Check if user with this email already exists before trying to insert
+        const existingUser = await getUserByEmail(userData.email);
+        if (existingUser) {
+          console.log(`[database][verifyOTP] User with email ${userData.email} already exists, skipping insertion`);
+          // Set the existing user as logged in instead of creating a new one
+          await updateUserLoginStatus(existingUser.id, true);
+          
+          // Return success but with a note about existing account
+          return {
+            success: true,
+            message: 'Logged in to existing account',
+            userId: existingUser.id,
+            isExistingUser: true
+          };
+        }
+        
+        // Only now insert into local SQLite database after OTP verification
         try {
-          const { createUser } = require('../services/mongoService');
-          const mongoResult = await createUser({
-            _id: userId,
+          const localResult = await insertUser({
+            id: userId,
             email: userData.email,
-            displayName: userData.displayName,
-            societies: userData.society ? [userData.society] : [],
-            points: 0,
-            achievements: []
+            display_name: userData.displayName,
+            password: userData.password,
+            society: userData.society,
+            is_logged_in: 1  // Set user as logged in directly in database
           });
-          console.log(`[database][verifyOTP] User created in MongoDB: ${userId}`);
+          console.log(`[database][verifyOTP] User inserted into local database: ${userId}`);
           
-          // Clean up pending user data
-          await setPreference(`pending_user_${userId}`, null);
+          // Insert into MongoDB via API
+          try {
+            const { createUser } = require('../services/mongoService');
+            const mongoResult = await createUser({
+              _id: userId,
+              email: userData.email,
+              displayName: userData.displayName,
+              societies: userData.society ? [userData.society] : [],
+              points: 0,
+              achievements: []
+            });
+            console.log(`[database][verifyOTP] User created in MongoDB: ${userId}`);
+            
+            // Clean up pending user data
+            await setPreference(`pending_user_${userId}`, null);
+            
+            return {
+              success: true,
+              message: 'Account verified and created successfully',
+              userId: userId
+            };
+          } catch (mongoError) {
+            console.error('Error creating MongoDB user:', mongoError);
+            // Proceed even if MongoDB creation fails - will sync later
+            
+            return {
+              success: true,
+              message: 'Account created with limited functionality. Some features may be unavailable until you reconnect.',
+              userId: userId
+            };
+          }
+        } catch (dbError) {
+          console.error('Error creating local user:', dbError);
+          // Check specifically for duplicate email error
+          if (dbError.message && dbError.message.includes('UNIQUE constraint failed: users.email')) {
+            // Try to get the existing user and log them in
+            const existingUser = await getUserByEmail(userData.email);
+            if (existingUser) {
+              await updateUserLoginStatus(existingUser.id, true);
+              return {
+                success: true,
+                message: 'Logged in to existing account',
+                userId: existingUser.id,
+                isExistingUser: true
+              };
+            }
+          }
           
-          // Set current user ID for auto-login
-          await setPreference('currentUserId', userId);
+          return {
+            success: false,
+            message: 'Failed to create account after verification: ' + dbError.message
+          };
+        }
+      } else {
+        // This is a login verification, not registration
+        // Just update login status and return success
+        console.log(`[database][verifyOTP] Login verification for existing user: ${userId}`);
+        try {
+          await updateUserLoginStatus(userId, true);
           
           return {
             success: true,
-            message: 'Account verified and created successfully',
+            message: 'Login successful',
             userId: userId
           };
-        } catch (mongoError) {
-          console.error('Error creating MongoDB user:', mongoError);
-          // Proceed even if MongoDB creation fails - will sync later
-          await setPreference('currentUserId', userId);
-          
+        } catch (loginError) {
+          console.error('Error updating login status:', loginError);
+          // Continue anyway since authentication was successful
           return {
             success: true,
-            message: 'Account created with limited functionality. Some features may be unavailable until you reconnect.',
+            message: 'Login successful, but login status update failed',
             userId: userId
           };
         }
-      } catch (dbError) {
-        console.error('Error creating local user:', dbError);
-        return {
-          success: false,
-          message: 'Failed to create account after verification: ' + dbError.message
-        };
       }
     } else {
       return {
@@ -1176,7 +1265,7 @@ export const verifyOTP = async (userId, otp) => {
     console.error('Error verifying OTP:', error);
     return {
       success: false,
-      message: 'Failed to verify OTP'
+      message: 'Failed to verify OTP: ' + error.message
     };
   }
 };
@@ -1218,9 +1307,6 @@ export const authenticateUser = async (email, password) => {
                   // Generate OTP for 2FA
                   await storeOTP(email, user.id);
                   
-                  // Set current user for auto-login if needed
-                  await setPreference('currentUserId', user.id);
-                  
                   resolve({
                     id: user.id,
                     email: user.email,
@@ -1236,34 +1322,17 @@ export const authenticateUser = async (email, password) => {
                 resolve({ success: false, message: 'Invalid credentials' });
               }
             } else {
-              // For demo purposes, allow demo login
+              // For demo purposes, handle special demo login without creating a user
               if (email === 'demo@example.com' && password === 'password') {
-                const userId = 'user_' + Math.random().toString(36).substring(2, 9);
-                const pendingUserData = {
-                  email: email,
-                  displayName: 'Demo User',
-                  password: password,
-                  society: 'Demo Society',
-                  createdAt: Date.now()
-                };
+                console.log('[database][authenticateUser] Demo login requested, but no user creation');
                 
-                // Store pending user data for demo user
-                await setPreference(`pending_user_${userId}`, JSON.stringify(pendingUserData));
-                
-                storeOTP(email, userId)
-                  .then(() => {
-                    resolve({
-                      id: userId,
-                      email: email,
-                      requiresOTP: true,
-                      isDemoUser: true,
-                      message: 'OTP sent for verification'
-                    });
-                  })
-                  .catch(error => {
-                    console.error('Error storing OTP for demo user:', error);
-                    reject(error);
-                  });
+                // Return special demo login response without creating a user
+                // The client will need to handle this case by directing to registration
+                resolve({
+                  success: false,
+                  isDemoLogin: true,
+                  message: 'Demo account not found. Please register first.'
+                });
               } else {
                 resolve({ success: false, message: 'User not found' });
               }
@@ -1279,6 +1348,165 @@ export const authenticateUser = async (email, password) => {
   } catch (error) {
     console.error('Error in authenticateUser:', error);
     return { success: false, message: 'Authentication error' };
+  }
+};
+
+// Login a user after OTP verification
+export const loginUserAfterOTP = async (userId) => {
+  try {
+    const database = await initDatabase();
+    
+    // First, ensure all other users are logged out
+    await logoutAllUsers();
+    
+    // Then set this user as logged in
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          'UPDATE users SET is_logged_in = 1, updated_at = ? WHERE id = ?',
+          [Date.now(), userId],
+          (_, result) => {
+            // Don't rely on rowsAffected which may be undefined
+            // Store the current user ID in preferences for easy lookup
+            setPreference('currentUserId', userId)
+              .then(() => {
+                resolve({ success: true, message: 'User logged in successfully' });
+              })
+              .catch(error => {
+                console.error('Error storing user ID preference:', error);
+                // Still resolve as success since database was updated
+                resolve({ success: true, message: 'User logged in but preference not stored' });
+              });
+          },
+          (_, error) => {
+            console.error('Error logging in user:', error);
+            reject(error);
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Error in loginUserAfterOTP:', error);
+    return { success: false, message: 'Login error: ' + error.message };
+  }
+};
+
+// Logout all users
+export const logoutAllUsers = async () => {
+  try {
+    const database = await initDatabase();
+    
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          'UPDATE users SET is_logged_in = 0, updated_at = ? WHERE is_logged_in = 1',
+          [Date.now()],
+          (_, result) => {
+            // Don't rely on rowsAffected which may be undefined
+            resolve({ success: true });
+          },
+          (_, error) => {
+            console.error('Error logging out all users:', error);
+            reject(error);
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Error in logoutAllUsers:', error);
+    return { success: false, message: 'Logout error: ' + error.message };
+  }
+};
+
+// Logout current user
+export const logoutCurrentUser = async () => {
+  try {
+    const currentUser = await getCurrentUser();
+    
+    if (!currentUser) {
+      return { success: false, message: 'No user is currently logged in' };
+    }
+    
+    const database = await initDatabase();
+    
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          'UPDATE users SET is_logged_in = 0, updated_at = ? WHERE id = ?',
+          [Date.now(), currentUser.id],
+          (_, result) => {
+            // Don't rely on rowsAffected which may be undefined
+            resolve({ success: true, message: 'User logged out successfully' });
+          },
+          (_, error) => {
+            console.error('Error logging out user:', error);
+            reject(error);
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Error in logoutCurrentUser:', error);
+    return { success: false, message: 'Logout error: ' + error.message };
+  }
+};
+
+// Get the currently logged in user
+export const getCurrentUser = async () => {
+  try {
+    const database = await initDatabase();
+    
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          'SELECT * FROM users WHERE is_logged_in = 1 LIMIT 1',
+          [],
+          (_, { rows }) => {
+            if (rows.length > 0) {
+              const user = rows.item(0);
+              // Don't send password back to client
+              delete user.password;
+              resolve(user);
+            } else {
+              resolve(null);
+            }
+          },
+          (_, error) => {
+            console.error('Error getting logged in user:', error);
+            reject(error);
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Error in getCurrentUser:', error);
+    return null;
+  }
+};
+
+// Check if any user is logged in
+export const isUserLoggedIn = async () => {
+  try {
+    const database = await initDatabase();
+    
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          'SELECT COUNT(*) as count FROM users WHERE is_logged_in = 1',
+          [],
+          (_, { rows }) => {
+            resolve(rows.item(0).count > 0);
+          },
+          (_, error) => {
+            console.error('Error checking if user is logged in:', error);
+            reject(error);
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Error in isUserLoggedIn:', error);
+    return false;
   }
 };
 
@@ -1489,20 +1717,195 @@ export const getDataFromDatabase = async (table, condition = null, limit = 100) 
 // Execute a custom query for more complex operations
 export const executeQuery = async (query, params = []) => {
   try {
+    if (DEBUG_SQL_ENABLED) {
+      console.log(`[SQL] Executing query: ${query}`);
+      console.log(`[SQL] Parameters:`, params);
+    }
     const database = await initDatabase();
-    
     return new Promise((resolve, reject) => {
       database.transaction(tx => {
         tx.executeSql(
           query,
           params,
-          (_, result) => resolve(result),
-          (_, error) => reject(error)
+          (_, result) => {
+            if (DEBUG_SQL_ENABLED) {
+              console.log(`[SQL] Query executed successfully: ${query}`);
+            }
+            resolve(result);
+          },
+          (_, error) => {
+            if (DEBUG_SQL_ENABLED) {
+              console.error(`[SQL] Error executing query: ${query}`, error);
+            }
+            reject(error);
+          }
         );
       });
     });
   } catch (error) {
-    console.error('Error executing custom query:', error);
+    if (DEBUG_SQL_ENABLED) {
+      console.error(`[SQL] Error executing query: ${query}`, error);
+    }
+    throw error;
+  }
+};
+
+// Debug flag for database reset - set to 0 to disable, 1 to enable reset
+const DEBUG_RESET_FLAG = 0; // Developer can change this to 1 when reset is needed
+
+// Function to reset database based on debug flag (1=reset, 0=skip)
+export const resetDatabaseIfUserLoggedIn = async () => {
+  try {
+    // If flag is 0, don't reset
+    if (DEBUG_RESET_FLAG !== 1) {
+      console.log('Database reset not performed: Debug flag is 0');
+      return {
+        success: true,
+        message: 'Reset not needed - debug flag is 0',
+        resetPerformed: false
+      };
+    }
+    
+    console.log('Performing complete database reset based on debug flag');
+    
+    // Ensure database is initialized (it should already be at this point)
+    const database = await initDatabase();
+    
+    // Get all tables
+    const tables = await getAllTableNames(database);
+    console.log('Tables to drop:', tables);
+    
+    // Filter out system tables
+    const userTables = tables.filter(table => table !== 'sqlite_sequence');
+    
+    // Instead of dropping tables one by one, use a single transaction with multiple statements
+    // This helps prevent "database table is locked" errors
+    try {
+      console.log('Starting database reset transaction');
+      await new Promise((resolve, reject) => {
+        database.transaction(tx => {
+          // Drop all user tables in a single transaction
+          userTables.forEach(table => {
+            console.log(`Queuing drop for table: ${table}`);
+            tx.executeSql(
+              `DROP TABLE IF EXISTS ${table}`,
+              [],
+              () => console.log(`Queued drop for table: ${table}`),
+              (_, err) => console.warn(`Warning while queuing drop for ${table}:`, err)
+            );
+          });
+        }, 
+        (error) => {
+          console.error('Transaction failed:', error);
+          reject(error);
+        },
+        () => {
+          console.log('All tables dropped successfully');
+          resolve();
+        });
+      });
+    } catch (dropError) {
+      console.error('Error during drop tables transaction:', dropError);
+      
+      // If transaction approach fails, try one more time with a more aggressive approach
+      console.log('Trying alternative approach with PRAGMA and individual drops...');
+      
+      try {
+        // Disable foreign keys and journaling temporarily for more reliable drops
+        await database.rawExecAsync('PRAGMA foreign_keys = OFF;');
+        await database.rawExecAsync('PRAGMA journal_mode = OFF;');
+        
+        // Add a small delay to ensure settings are applied
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Try to drop tables individually with retries
+        for (const table of userTables) {
+          let retries = 3;
+          while (retries > 0) {
+            try {
+              console.log(`Dropping table ${table} (retries left: ${retries})`);
+              await database.rawExecAsync(`DROP TABLE IF EXISTS ${table};`);
+              console.log(`Successfully dropped table: ${table}`);
+              break;
+            } catch (err) {
+              console.warn(`Error dropping ${table}, retries left: ${retries - 1}`, err);
+              retries--;
+              if (retries === 0) {
+                console.error(`Failed to drop table ${table} after multiple attempts`);
+              } else {
+                // Wait before retrying
+                await new Promise(resolve => setTimeout(resolve, 300));
+              }
+            }
+          }
+        }
+        
+        // Re-enable foreign keys
+        await database.rawExecAsync('PRAGMA foreign_keys = ON;');
+        await database.rawExecAsync('PRAGMA journal_mode = DELETE;');
+      } catch (alternativeError) {
+        console.error('Alternative drop approach also failed:', alternativeError);
+      }
+    }
+    
+    // Reinitialize the tables regardless of whether drop succeeded
+    console.log('Reinitializing database tables after reset');
+    await initializeTables();
+    
+    // Verify tables were recreated
+    const recreatedTables = await getAllTableNames(database);
+    console.log('Recreated tables after reset:', recreatedTables);
+    
+    // If we have the expected tables, consider it a success
+    if (recreatedTables.length >= 5) { // At least our core tables
+      return {
+        success: true,
+        message: 'Database reset completed - tables recreated successfully',
+        resetPerformed: true
+      };
+    } else {
+      return {
+        success: false,
+        message: 'Database reset may be incomplete - some tables might be missing',
+        resetPerformed: true,
+        recreatedTables
+      };
+    }
+  } catch (error) {
+    console.error('Error in resetDatabaseIfUserLoggedIn:', error);
+    return {
+      success: false,
+      message: 'Database reset failed: ' + error.message,
+      resetPerformed: false
+    };
+  }
+};
+
+// Function to update user login status
+export const updateUserLoginStatus = async (userId, isLoggedIn) => {
+  try {
+    const database = await initDatabase();
+    const now = Date.now();
+    
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          'UPDATE users SET is_logged_in = ?, updated_at = ? WHERE id = ?',
+          [isLoggedIn ? 1 : 0, now, userId],
+          (_, result) => {
+            // Don't rely on rowsAffected property which might be undefined
+            // Always consider the update successful unless there's an explicit error
+            resolve({ success: true });
+          },
+          (_, error) => {
+            console.error('Error updating login status:', error);
+            reject(error);
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Error in updateUserLoginStatus:', error);
     throw error;
   }
 };
@@ -1531,9 +1934,16 @@ export default {
   verifyOTP,
   resendOTP,
   authenticateUser,
+  getCurrentUser,
+  isUserLoggedIn,
+  loginUserAfterOTP,
+  logoutCurrentUser,
+  logoutAllUsers,
   updateUserProfile,
   syncUserWithMongoDB,
   getCompleteUserData,
   getDataFromDatabase,
-  executeQuery
+  executeQuery,
+  resetDatabaseIfUserLoggedIn,
+  updateUserLoginStatus // Add this to exports
 };

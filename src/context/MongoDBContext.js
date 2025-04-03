@@ -19,6 +19,11 @@ export const MongoDBProvider = ({ children }) => {
         setIsConnected(true);
         setLastSyncTime(new Date());
         Logger.debug('MongoDBContext', 'MongoDB connection successful', result);
+
+        // Fetch and print all users from MongoDB
+        const { getAllUsers } = require('../services/mongoService');
+        const users = await getAllUsers();
+        console.log('[MongoDBContext] All users from MongoDB:', users);
       } catch (error) {
         setIsConnected(false);
         Logger.error('MongoDBContext', 'MongoDB connection failed', error);

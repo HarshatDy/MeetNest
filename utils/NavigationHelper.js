@@ -1,5 +1,5 @@
 import { CommonActions } from '@react-navigation/native';
-import { Logger } from './Logger';
+import { Logger, DEBUG_ENABLED } from './Logger';
 
 // Navigation reference to be initialized in App.js
 let navigationRef = null;
@@ -11,6 +11,110 @@ export const NavigationHelper = {
    */
   setNavigationRef: (ref) => {
     navigationRef = ref;
+  },
+
+  /**
+   * Debug helper to log navigation state
+   * @returns {Object|null} Navigation state details
+   */
+  getNavigationState: () => {
+    if (!navigationRef) {
+      Logger.error('NavigationHelper', 'getNavigationState', 'Navigation reference not set');
+      return null;
+    }
+
+    try {
+      const state = navigationRef.getRootState();
+      
+      // Log current navigation state
+      if (DEBUG_ENABLED) { // Wrap debug logs with the flag
+        Logger.debug('NavigationHelper', 'Current navigation state', { 
+          routes: state?.routes?.map(r => r.name) || [],
+          index: state?.index,
+          routeNames: navigationRef.getCurrentOptions()?.routeNames || [],
+          currentRoute: navigationRef.getCurrentRoute()?.name,
+          currentNavigator: state?.routes?.[state?.index]?.name || 'unknown'
+        });
+      }
+
+      // Try to collect names of all screens in the app
+      const allScreens = [];
+      const processRoutes = (routes) => {
+        if (!routes) return;
+        routes.forEach(route => {
+          allScreens.push(route.name);
+          // Process nested state (for nested navigators)
+          if (route.state && route.state.routes) {
+            processRoutes(route.state.routes);
+          }
+        });
+      };
+      
+      processRoutes(state?.routes);
+      
+      if (DEBUG_ENABLED) { // Wrap debug logs with the flag
+        Logger.debug('NavigationHelper', 'Available screens', { screens: allScreens });
+      }
+      
+      return {
+        state,
+        currentRoute: navigationRef.getCurrentRoute()?.name,
+        allScreens
+      };
+    } catch (error) {
+      Logger.error('NavigationHelper', 'Error analyzing navigation state', error);
+      return null;
+    }
+  },
+
+  /**
+   * Handle logout navigation - reset to the login screen
+   */
+  navigateToLogin: () => {
+    if (!navigationRef) {
+      Logger.error('NavigationHelper', 'navigateToLogin', 'Navigation reference not set');
+      return false;
+    }
+
+    try {
+      // First log the current navigation state for debugging
+      const navState = NavigationHelper.getNavigationState();
+      if (DEBUG_ENABLED) { // Wrap debug logs with the flag
+        Logger.debug('NavigationHelper', 'Attempting to navigate to Login', { 
+          currentState: navState?.currentRoute || 'unknown',
+          resetToLogin: { index: 0, routes: [{ name: 'Login' }] }
+        });
+      }
+      
+      // NEW APPROACH: Reset the ROOT navigator instead of the current navigator
+      // This ensures we're resetting to the authentication flow regardless of which screen we're on
+      try {
+        // First try to navigate to the root level, then reset
+        navigationRef.navigate('Login');
+        return true;
+      } catch (directError) {
+        // If that fails, try with CommonActions reset at root level
+        navigationRef.dispatch(state => {
+          // Create a reset action that goes to the root of the app
+          const rootState = navigationRef.getRootState();
+          
+          // Find the outermost stack that contains Login
+          // If we can't determine it, just use a simple reset
+          return CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Login' }]
+          });
+        });
+        
+        if (DEBUG_ENABLED) { // Wrap debug logs with the flag
+          Logger.navigation('navigateToLogin', 'Reset navigation to root with Login screen');
+        }
+        return true;
+      }
+    } catch (error) {
+      Logger.error('NavigationHelper', 'navigateToLogin', error);
+      return false;
+    }
   },
 
   /**
@@ -41,7 +145,9 @@ export const NavigationHelper = {
         );
       }, 100);
 
-      Logger.navigation('navigateToLocalTimeline', 'Timeline > Local', params);
+      if (DEBUG_ENABLED) { // Wrap debug logs with the flag
+        Logger.navigation('navigateToLocalTimeline', 'Timeline > Local', params);
+      }
     } catch (error) {
       Logger.error('NavigationHelper', 'navigateToLocalTimeline', error);
     }
@@ -84,7 +190,9 @@ export const NavigationHelper = {
         }, 100);
       }
 
-      Logger.navigation('navigateTo', path.join(' > '), params);
+      if (DEBUG_ENABLED) { // Wrap debug logs with the flag
+        Logger.navigation('navigateTo', path.join(' > '), params);
+      }
     } catch (error) {
       Logger.error('NavigationHelper', 'navigateTo', error);
     }

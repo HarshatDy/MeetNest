@@ -76,7 +76,8 @@ export const UserProvider = ({ children }) => {
         if (userData) {
           setUser({
             ...userData,
-            isLoggedIn: true
+            // Don't need to add isLoggedIn property here since it's already in the userData
+            // from is_logged_in column in the database
           });
           Logger.debug('UserContext', 'User verified and logged in', { userId });
         }
@@ -111,6 +112,18 @@ export const UserProvider = ({ children }) => {
       
       const result = await authService.login(credentials.email, credentials.password);
       
+      // Special handling for demo login
+      if (result.isDemoLogin) {
+        Logger.debug('UserContext', 'Demo login requested, redirecting to registration');
+        return {
+          success: false,
+          isDemoLogin: true,
+          message: 'Demo account requires registration first',
+          email: credentials.email,
+          password: credentials.password
+        };
+      }
+      
       if (result.success && result.requiresOTP) {
         Logger.debug('UserContext', 'Login requires OTP', { userId: result.userId });
         return {
@@ -125,10 +138,7 @@ export const UserProvider = ({ children }) => {
         const userData = await authService.getCurrentUser();
         
         if (userData) {
-          setUser({
-            ...userData,
-            isLoggedIn: true
-          });
+          setUser(userData);
           Logger.debug('UserContext', 'User logged in', { userId: userData.id });
         }
         
@@ -167,10 +177,7 @@ export const UserProvider = ({ children }) => {
         const userData = await authService.getCurrentUser();
         
         if (userData) {
-          setUser({
-            ...userData,
-            isLoggedIn: true
-          });
+          setUser(userData); // userData already has is_logged_in from the database
           Logger.debug('UserContext', 'User verified and logged in', { userId });
         }
         

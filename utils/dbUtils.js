@@ -1,4 +1,5 @@
-import { initDatabase } from './database';
+import { initDatabase } from '../src/utils/database';
+import * as database from '../src/utils/database';
 
 /**
  * Creates test data for development purposes
@@ -17,7 +18,8 @@ export const createTestData = async () => {
         password: 'password123',
         society: 'Test Society',
         created_at: Date.now(),
-        updated_at: Date.now()
+        updated_at: Date.now(),
+        is_logged_in: 0
       }
     ];
     
@@ -27,14 +29,15 @@ export const createTestData = async () => {
         await db.transaction(tx => {
           tx.executeSql(
             `INSERT OR IGNORE INTO users 
-             (id, email, display_name, password, society, created_at, updated_at) 
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+             (id, email, display_name, password, society, is_logged_in, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               user.id, 
               user.email, 
               user.display_name, 
               user.password, 
-              user.society, 
+              user.society,
+              user.is_logged_in,
               user.created_at, 
               user.updated_at
             ]
@@ -53,6 +56,26 @@ export const createTestData = async () => {
   }
 };
 
+// Function to check and reset database based on debug flag
+export const checkAndResetDatabase = async () => {
+  try {
+    console.log('Checking if database reset is needed via debug flag...');
+    
+    // Ensure database is initialized first
+    await database.initDatabase();
+    
+    // Then attempt reset if needed
+    const result = await database.resetDatabaseIfUserLoggedIn();
+    
+    console.log('Reset database check result:', result);
+    return result.resetPerformed;
+  } catch (error) {
+    console.error('Error checking database reset condition:', error);
+    return false;
+  }
+};
+
 export default {
-  createTestData
+  createTestData,
+  checkAndResetDatabase
 };

@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '../contexts/UserContext';
 import { Logger } from '../utils/Logger';
 import { resendUserOTP } from '../src/utils/database';
+import { NavigationHelper } from '../utils/NavigationHelper';
 
 const OTPVerificationPage = ({ navigation, route }) => {
   const { userId, email, isRegistration = true } = route.params || {};
@@ -103,19 +104,36 @@ const OTPVerificationPage = ({ navigation, route }) => {
       const result = await verifyFn(userId, otp);
       
       if (result.success) {
-        if (isRegistration) {
+        // Check if we logged into an existing account
+        if (result.isExistingUser) {
+          // Show a different message for existing accounts
+          Alert.alert(
+            'Account Already Exists',
+            'You have been logged into your existing account.',
+            [{ 
+              text: 'Continue', 
+              onPress: () => {
+                // Use NavigationHelper to safely navigate to Login
+                NavigationHelper.navigateToLogin();
+              }
+            }]
+          );
+        } else if (isRegistration) {
           // Registration success - show welcome
           Alert.alert(
             'Welcome to Neighborly!',
             'Your account has been created successfully.',
-            [{ text: 'Continue', onPress: () => navigation.replace('Home') }]
+            [{ 
+              text: 'Continue', 
+              onPress: () => {
+                // Use NavigationHelper to safely navigate to Login
+                NavigationHelper.navigateToLogin();
+              }
+            }]
           );
         } else {
-          // Login success - go to home
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'MainApp' }],
-          });
+          // Login success - go to login screen using NavigationHelper
+          NavigationHelper.navigateToLogin();
         }
       } else {
         setError(result.message || 'Invalid verification code');
