@@ -206,7 +206,7 @@ async function initializeTables() {
         `CREATE TABLE IF NOT EXISTS otp_verification (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           email TEXT NOT NULL UNIQUE,
-          userId TEXT NOT NULL,
+          user_id TEXT NOT NULL,
           otp TEXT NOT NULL,
           created_at INTEGER NOT NULL,
           attempts INTEGER DEFAULT 0,
@@ -315,7 +315,7 @@ export const storeOTP = async (email, userId) => {
           () => {
             // Then insert new OTP
             tx.executeSql(
-              'INSERT INTO otp_verification (email, userId, otp, created_at, attempts, verified) VALUES (?, ?, ?, ?, 0, 0)',
+              'INSERT INTO otp_verification (email, user_id, otp, created_at, attempts, verified) VALUES (?, ?, ?, ?, 0, 0)',
               [email, userId, otp, now],
               async () => {
                 // Send the OTP via email
@@ -354,7 +354,7 @@ export const verifyUserOTP = async (userId, providedOTP) => {
       database.transaction(tx => {
         // Get the stored OTP for this user
         tx.executeSql(
-          'SELECT * FROM otp_verification WHERE userId = ?',
+          'SELECT * FROM otp_verification WHERE user_id = ?',
           [userId],
           (_, { rows }) => {
             if (rows.length === 0) {
@@ -371,7 +371,7 @@ export const verifyUserOTP = async (userId, providedOTP) => {
                 
             // Update attempts count
             tx.executeSql(
-              'UPDATE otp_verification SET attempts = ? WHERE userId = ?',
+              'UPDATE otp_verification SET attempts = ? WHERE user_id = ?',
               [attempts, userId]
             );
             
@@ -391,7 +391,7 @@ export const verifyUserOTP = async (userId, providedOTP) => {
             if (storedOTP === providedOTP) {
               // Mark as verified
               tx.executeSql(
-                'UPDATE otp_verification SET verified = 1 WHERE userId = ?',
+                'UPDATE otp_verification SET verified = 1 WHERE user_id = ?',
                 [userId],
                 () => {
                   resolve({ success: true, message: 'OTP verified successfully' });
@@ -430,7 +430,7 @@ export const resendUserOTP = async (userId, email) => {
       database.transaction(tx => {
         // Check if user exists and hasn't been recently sent an OTP
         tx.executeSql(
-          'SELECT * FROM otp_verification WHERE userId = ?',
+          'SELECT * FROM otp_verification WHERE user_id = ?',
           [userId],
           async (_, { rows }) => {
             if (rows.length > 0) {

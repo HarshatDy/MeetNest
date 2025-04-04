@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '../contexts/UserContext';
 import { Logger } from '../utils/Logger';
-import { resendUserOTP } from '../src/utils/database';
+import { resendUserOTP } from '../src/utils/supabaseDatabase';
 import { NavigationHelper } from '../utils/NavigationHelper';
 
 const OTPVerificationPage = ({ navigation, route }) => {
@@ -67,7 +67,7 @@ const OTPVerificationPage = ({ navigation, route }) => {
       setIsLoading(true);
       setError('');
       
-      // Resend OTP
+      // This now uses Supabase underneath
       const result = await resendUserOTP(userId, email);
       
       if (result.success) {

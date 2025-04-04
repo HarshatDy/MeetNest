@@ -8,8 +8,9 @@ import {
   setPreference,
   getPreference,
   updateUserLoginStatus,
-  isUserLoggedIn
-} from '../utils/database';
+  isUserLoggedIn,
+  getCurrentUser as getDbCurrentUser
+} from '../utils/supabaseDatabase';
 
 // Register a new user
 export async function registerUser(userData) {
@@ -207,8 +208,7 @@ export async function getCurrentUser() {
       return null;
     }
     
-    // Get the logged in user from the database
-    const { getCurrentUser: getDbCurrentUser } = require('../utils/database');
+    // Get the logged in user from the database using Supabase implementation
     const userData = await getDbCurrentUser();
     
     if (!userData) {

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Logger } from '../utils/Logger';
-import { createUserAccount } from '../utils/database';
+import { createUserAccount } from '../src/utils/supabaseDatabase';
 
 export default function RegistrationPage({ navigation }) {
   const [email, setEmail] = useState('');
@@ -70,6 +70,7 @@ export default function RegistrationPage({ navigation }) {
       // Log the entire userData object for verification
       console.log("Registration userData:", JSON.stringify(userData));
       
+      // This function now uses Supabase instead of SQLite
       const result = await createUserAccount(userData);
       
       if (result.success) {

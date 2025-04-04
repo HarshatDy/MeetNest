@@ -11,7 +11,8 @@ import { Logger } from './utils/Logger';
 import { TimelineProvider } from './contexts/TimelineContext';
 import { NavigationHelper } from './utils/NavigationHelper';
 import { MongoDBProvider } from './src/context/MongoDBContext';
-import { initDatabase, setPreference, getPreference, resetDatabaseIfUserLoggedIn } from './src/utils/database';
+// Import from supabaseDatabase instead of database
+import { setPreference, getPreference } from './src/utils/supabaseDatabase';
 
 // Import the page components with explicit file extensions
 import LoginPage from './pages/LoginPage.js';
@@ -63,37 +64,16 @@ export default function App() {
     };
   }, []);
 
-  // Initialize local SQLite database
+  // Initialize local database
   useEffect(() => {
     const setupDatabase = async () => {
       try {
-        // Initialize database first
+        // Initialize Supabase database instead of SQLite
+        const { initDatabase } = require('./src/utils/supabaseDatabase');
         await initDatabase();
-        console.log('Local database initialized');
+        console.log('Supabase database connection initialized');
         
-        // Now check if database reset is needed
-        console.log('Checking if database reset is needed...');
-        const resetResult = await resetDatabaseIfUserLoggedIn();
-        if (resetResult.resetPerformed) {
-          console.log('Database has been reset:', resetResult.message);
-        } else {
-          console.log('No database reset performed:', resetResult.message);
-        }
-        
-        // In development, create some test data
-        if (__DEV__) {
-          try {
-            // Use dynamic import to avoid production bundle issues
-            const dbUtils = await import('./utils/dbUtils');
-            if (dbUtils && dbUtils.createTestData) {
-              await dbUtils.createTestData();
-            }
-          } catch (err) {
-            console.error('Error creating test data:', err);
-          }
-        }
-        
-        // Mark database as initialized
+        // Set database as initialized
         setIsDbInitialized(true);
       } catch (err) {
         console.error('Database initialization failed:', err);
@@ -116,27 +96,31 @@ export default function App() {
   useEffect(() => {
     if (!isDbInitialized) return;
     
+    let hasShownSchemaWarning = false;
+    
     const performCleanup = async () => {
       try {
-        // Import the function directly
-        const { cleanupExpiredOTPs } = require('./utils/database');
+        // Use Supabase cleanup function
+        const { cleanupExpiredOTPs } = require('./src/utils/supabaseDatabase');
         const result = await cleanupExpiredOTPs();
         
-        if (result && result.rowsAffected > 0) {
-          Logger.debug('App', `Cleaned up ${result.rowsAffected} expired OTPs`);
+        if (!result.tableExists && !hasShownSchemaWarning) {
+          console.warn('⚠️ Supabase schema not initialized! Please run the schema initialization SQL script.');
+          console.warn('Run: npm run display:schema to see the SQL script to execute in your Supabase dashboard.');
+          hasShownSchemaWarning = true;
+        } else if (result.rowsAffected > 0) {
+          console.log(`Cleaned up ${result.rowsAffected} expired OTP records`);
         }
       } catch (error) {
-        console.error('Error in cleanupExpiredOTPs:', error);
+        console.error('Error cleaning up expired OTPs:', error);
       }
     };
     
-    // Run cleanup on app start
+    // Run immediately and then every 5 minutes
     performCleanup();
+    const interval = setInterval(performCleanup, 5 * 60 * 1000);
     
-    // Schedule cleanup every 15 minutes
-    const cleanupInterval = setInterval(performCleanup, 15 * 60 * 1000);
-    
-    return () => clearInterval(cleanupInterval);
+    return () => clearInterval(interval);
   }, [isDbInitialized]);
 
   // Check if user is logged in on app start
@@ -147,8 +131,8 @@ export default function App() {
       try {
         console.log('[DEBUG] Checking if user is logged in from database...');
         
-        // Replace preference check with database check
-        const { isUserLoggedIn } = require('./src/utils/database');
+        // Replace database import with supabaseDatabase
+        const { isUserLoggedIn } = require('./src/utils/supabaseDatabase');
         const loginStatus = await isUserLoggedIn();
         
         console.log('[DEBUG] Login status from database:', loginStatus);
@@ -169,7 +153,8 @@ export default function App() {
     
     try {
       console.log('[DEBUG] Manually refreshing login status from database...');
-      const { isUserLoggedIn } = require('./src/utils/database');
+      // Use supabaseDatabase instead of database
+      const { isUserLoggedIn } = require('./src/utils/supabaseDatabase');
       const loginStatus = await isUserLoggedIn();
       console.log('[DEBUG] Updated login status from database:', loginStatus);
       setIsLoggedIn(loginStatus);
@@ -184,8 +169,8 @@ export default function App() {
   const handleLogout = async () => {
     try {
       console.log('[DEBUG] Handling logout...');
-      // Import the logout function
-      const { logoutCurrentUser } = require('./src/utils/database');
+      // Import the logout function from supabaseDatabase
+      const { logoutCurrentUser } = require('./src/utils/supabaseDatabase');
       
       // Call the database function to log the user out
       await logoutCurrentUser();

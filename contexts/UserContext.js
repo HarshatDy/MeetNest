@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Logger } from '../utils/Logger';
-// Fix the import path for authService
 import authService from '../src/services/authService';
+import { getCurrentUser } from '../src/utils/supabaseDatabase';
 
 const UserContext = createContext();
 

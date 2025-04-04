@@ -36,11 +36,24 @@ async function createIndexes() {
     // Create indexes for the users collection
     await db.collection('users').createIndex({ societies: 1 });
     await db.collection('users').createIndex({ points: -1 });
+    await db.collection('users').createIndex({ role: 1 });
     console.log('Created indexes for users collection');
     
     // Create indexes for tournament results collection
     await db.collection('tournament_results').createIndex({ tournamentId: 1 }, { unique: true });
     console.log('Created indexes for tournament_results collection');
+    
+    // Create indexes for societies collection
+    await db.collection('societies').createIndex({ name: 1 });
+    await db.collection('societies').createIndex({ "location.coordinates": "2dsphere" });
+    console.log('Created indexes for societies collection');
+    
+    // Create indexes for events collection
+    await db.collection('events').createIndex({ societyId: 1 });
+    await db.collection('events').createIndex({ status: 1 });
+    await db.collection('events').createIndex({ date: 1 });
+    await db.collection('events').createIndex({ "organizer.role": 1 });
+    console.log('Created indexes for events collection');
     
     console.log('MongoDB indexes created successfully');
   } catch (error) {

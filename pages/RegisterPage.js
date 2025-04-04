@@ -66,7 +66,7 @@ export default function RegisterPage({ navigation }) {
     try {
       setIsLoading(true);
       
-      // Use the context register function for improved flow
+      // Use the context register function which now uses Supabase underneath
       const result = await register({
         email: formData.email,
         displayName: formData.displayName,
