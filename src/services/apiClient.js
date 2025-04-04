@@ -133,21 +133,16 @@ export async function verifyUserEmail(userId, verificationCode) {
 // New function to get all users
 export async function getAllUsers() {
   try {
-    const response = await fetch('/api/users', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`API GET /api/users failed: ${response.statusText}`);
+    const online = await isOnline();
+    if (!online) {
+      throw new Error('Network connection unavailable. Please check your internet connection.');
     }
 
-    return await response.json();
+    const response = await apiRequest('/api/users', 'GET');
+    return response.users || [];
   } catch (error) {
-    console.error('[apiClient][getAllUsers] Error fetching all users:', error);
-    throw error;
+    console.error('[apiClient][getAllUsers] Error fetching all users:', error.message);
+    throw new Error(`Failed to fetch users: ${error.message}`);
   }
 }
 

@@ -32,11 +32,11 @@ export async function getUser(userId) {
 // New function to get all users from MongoDB
 export async function getAllUsers() {
   try {
-    const response = await apiClient.getAllUsers();
-    return response.users || [];
+    const users = await apiClient.getAllUsers();
+    return users;
   } catch (error) {
-    console.error('[mongoService][getAllUsers] Error fetching all users:', error);
-    return []; // Return empty array instead of throwing
+    console.error('[mongoService][getAllUsers] Error fetching all users:', error.message);
+    return []; // Return an empty array to avoid breaking the app
   }
 }
 
@@ -185,6 +185,17 @@ export async function getUserWithCacheFallback(userId) {
   }
 }
 
+export async function fetchUsers() {
+  try {
+    const users = await getAllUsers();
+    console.log('[mongoService][fetchUsers] Fetched users:', users);
+    return users;
+  } catch (error) {
+    console.error('[mongoService][fetchUsers] Error fetching users:', error.message);
+    throw error;
+  }
+}
+
 export default {
   getUser,
   createUser,
@@ -199,5 +210,6 @@ export default {
   createPost,
   getPosts,
   getEvents,
-  getAllUsers // Add the new function to exports
+  getAllUsers, // Add the new function to exports
+  fetchUsers
 };

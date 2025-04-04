@@ -239,6 +239,23 @@ app.get("/api/users/:userId", async (req: Request, res: Response) => {
   }
 });
 
+app.get("/api/users", async (req: Request, res: Response) => {
+  try {
+    const client = await connectToDatabase(); // Connect to MongoDB
+    const db = client.db(dbName); // Use the database name
+    const collection = db.collection("users"); // Access the 'users' collection
+
+    // Fetch all users
+    const users = await collection.find({}).toArray();
+
+    // Return the users as a JSON response
+    res.status(200).json({users});
+  } catch (error) {
+    logger.error("Error fetching all users:", error);
+    res.status(500).json({error: "Failed to fetch users"});
+  }
+});
+
 app.post("/api/users", async (req: Request, res: Response) => {
   try {
     const client = await connectToDatabase();

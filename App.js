@@ -202,6 +202,21 @@ export default function App() {
     }
   };
 
+  // Fetch initial users on app start
+  useEffect(() => {
+    const fetchInitialUsers = async () => {
+      try {
+        const { fetchUsers } = require('./src/services/mongoService');
+        const users = await fetchUsers();
+        console.log('[App] Initial users fetched:', users);
+      } catch (error) {
+        console.error('[App] Error fetching initial users:', error.message);
+      }
+    };
+
+    fetchInitialUsers();
+  }, []);
+
   // If database is not yet initialized, render nothing or a simple loading indicator
   if (!isDbInitialized) {
     return null; // Return null rather than using splash screen

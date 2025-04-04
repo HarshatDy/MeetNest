@@ -6,8 +6,8 @@ import { sendOTPEmail } from '../../utils/emailService';
 let db = null;
 let dbInitPromise = null;
 
-const DEBUG_SQL_ENABLED = false; // Add a flag to control SQL debug prints
-const DEBUG_GENERAL_ENABLED = false; // Add a flag to control general debug prints
+const DEBUG_SQL_ENABLED = true; // Add a flag to control SQL debug prints
+const DEBUG_GENERAL_ENABLED = true; // Add a flag to control general debug prints
 
 // Generate a random 4-digit OTP
 const generateOTP = () => {
@@ -727,7 +727,7 @@ export const insertUser = async (userData) => {
             userData.displayName || userData.display_name || '',
             userData.password,
             userData.society || '',
-            userData.isLoggedIn || 0,  // Default to not logged in
+            userData.isLoggedIn || userData.is_logged_in|| 0,  // Default to not logged in
             now,
             now
           ],
@@ -1753,6 +1753,22 @@ export const executeQuery = async (query, params = []) => {
 // Debug flag for database reset - set to 0 to disable, 1 to enable reset
 const DEBUG_RESET_FLAG = 0; // Developer can change this to 1 when reset is needed
 
+// Function to retry SQL execution with delay
+const retryWithDelay = async (fn, retries = 3, delay = 500) => {
+  while (retries > 0) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (retries === 1 || !error.message.includes('database table is locked')) {
+        throw error;
+      }
+      console.warn(`[SQL] Retrying due to table lock. Retries left: ${retries - 1}`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      retries--;
+    }
+  }
+};
+
 // Function to reset database based on debug flag (1=reset, 0=skip)
 export const resetDatabaseIfUserLoggedIn = async () => {
   try {
@@ -1795,9 +1811,19 @@ export const resetDatabaseIfUserLoggedIn = async () => {
             );
           });
         }, 
-        (error) => {
+        async (error) => {
           console.error('Transaction failed:', error);
-          reject(error);
+          console.log('Retrying table drops individually with delay...');
+          try {
+            for (const table of userTables) {
+              await retryWithDelay(() => database.rawExecAsync(`DROP TABLE IF EXISTS ${table}`));
+              console.log(`Successfully dropped table: ${table}`);
+            }
+            resolve();
+          } catch (retryError) {
+            console.error('Retrying individual table drops failed:', retryError);
+            reject(retryError);
+          }
         },
         () => {
           console.log('All tables dropped successfully');
@@ -1910,6 +1936,37 @@ export const updateUserLoginStatus = async (userId, isLoggedIn) => {
   }
 };
 
+// Clean up expired OTPs
+export const cleanupExpiredOTPs = async () => {
+  try {
+    const database = await initDatabase();
+    const expirationTime = 15 * 60 * 1000; // 15 minutes in milliseconds
+    const now = Date.now();
+
+    return retryWithDelay(() => {
+      return new Promise((resolve, reject) => {
+        database.transaction(tx => {
+          tx.executeSql(
+            'DELETE FROM otp_verification WHERE created_at < ?',
+            [now - expirationTime],
+            (_, result) => {
+              const rowsAffected = result && result.rowsAffected ? result.rowsAffected : 0;
+              resolve({ rowsAffected });
+            },
+            (_, error) => {
+              console.error('Error cleaning up expired OTPs:', error);
+              reject(error);
+            }
+          );
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Error in cleanupExpiredOTPs:', error);
+    return { rowsAffected: 0 };
+  }
+};
+
 // Make sure to init the database on import
 initDatabase().catch(error => 
   console.error('Failed to initialize database on import:', error)
@@ -1945,5 +2002,6 @@ export default {
   getDataFromDatabase,
   executeQuery,
   resetDatabaseIfUserLoggedIn,
-  updateUserLoginStatus // Add this to exports
+  updateUserLoginStatus, // Add this to exports
+  cleanupExpiredOTPs // Add this to exports
 };

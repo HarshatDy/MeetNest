@@ -23,10 +23,14 @@ export const MongoDBProvider = ({ children }) => {
         // Fetch and print all users from MongoDB
         const { getAllUsers } = require('../services/mongoService');
         const users = await getAllUsers();
-        console.log('[MongoDBContext] All users from MongoDB:', users);
+        if (users.length === 0) {
+          console.warn('[MongoDBContext] No users fetched. Possibly offline or server issue.');
+        } else {
+          console.log('[MongoDBContext] All users from MongoDB:', users);
+        }
       } catch (error) {
         setIsConnected(false);
-        Logger.error('MongoDBContext', 'MongoDB connection failed', error);
+        Logger.error('MongoDBContext', 'MongoDB connection failed', error.message);
       } finally {
         setIsLoading(false);
       }

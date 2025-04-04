@@ -1364,7 +1364,30 @@ export const updateUserLoginStatus = async (userId, isLoggedIn) => {
 };
 
 // Debug flag for database reset - set to 1 to enable reset, 0 to disable
-const DEBUG_RESET_FLAG = 0; // Developer can change this to 1 when reset is needed
+const DEBUG_RESET_FLAG = 1; // Developer can change this to 1 when reset is needed
+
+// Helper function to get all table names
+const getAllTableNames = async (database) => {
+  return new Promise((resolve, reject) => {
+    database.transaction(tx => {
+      tx.executeSql(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+        [],
+        (_, { rows }) => {
+          const tableNames = [];
+          for (let i = 0; i < rows.length; i++) {
+            tableNames.push(rows.item(i).name);
+          }
+          resolve(tableNames);
+        },
+        (_, error) => {
+          console.error('Error getting table names:', error);
+          reject(error);
+        }
+      );
+    });
+  });
+};
 
 // Function to reset database based on debug flag (1=reset, 0=skip)
 export const resetDatabaseIfUserLoggedIn = async (userId) => {
@@ -1393,28 +1416,67 @@ export const resetDatabaseIfUserLoggedIn = async (userId) => {
     
     console.log('Tables to drop:', userTables);
     
-    // Drop all tables directly without checking row counts
+    // Helper function to drop a table with retry logic
+    const dropTableWithRetry = async (tableName, maxRetries = 5) => {
+      let retries = 0;
+      while (retries < maxRetries) {
+        try {
+          await new Promise((resolve, reject) => {
+            // Create a new transaction for each table to prevent locks
+            database.transaction(tx => {
+              console.log(`Attempting to drop table: ${tableName} (retry ${retries})`);
+              tx.executeSql(
+                `DROP TABLE IF EXISTS ${tableName}`,
+                [],
+                (_, result) => {
+                  console.log(`Successfully dropped table ${tableName}`);
+                  resolve(result);
+                },
+                (_, err) => {
+                  console.warn(`Warning while dropping ${tableName}:`, err);
+                  reject(err);
+                }
+              );
+            }, (txError) => {
+              console.warn(`Transaction error dropping ${tableName}:`, txError);
+              reject(txError);
+            });
+          });
+          
+          // If successful, break the retry loop
+          break;
+        } catch (error) {
+          retries++;
+          console.warn(`Failed to drop ${tableName}, retry ${retries}/${maxRetries}`);
+          
+          if (error.message && error.message.includes('locked')) {
+            // If table is locked, wait longer before retrying
+            const delay = 500 * Math.pow(2, retries); // Exponential backoff: 500ms, 1s, 2s, 4s...
+            console.log(`Table ${tableName} is locked, waiting ${delay}ms before retry`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          } else if (retries >= maxRetries) {
+            console.error(`Failed to drop ${tableName} after ${maxRetries} attempts:`, error);
+            // Continue anyway to try other tables
+          }
+        }
+      }
+    };
+    
+    // Drop tables sequentially rather than in parallel to prevent locks
     for (const table of userTables) {
-      await new Promise((resolve, reject) => {
-        database.transaction(tx => {
-          console.log(`Dropping table: ${table}`);
-          tx.executeSql(
-            `DROP TABLE IF EXISTS ${table}`,
-            [],
-            (_, result) => {
-              console.log(`Dropped table ${table}`);
-              resolve(result);
-            },
-            (_, err) => {
-              console.error(`Error dropping table ${table}:`, err);
-              reject(err);
-            }
-          );
-        });
-      });
+      try {
+        await dropTableWithRetry(table);
+        // Add a small delay between operations
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } catch (error) {
+        console.warn(`Could not drop table ${table}, continuing:`, error);
+      }
     }
     
-    // Reinitialize the tables
+    // Reinitialize the tables - add timeout to ensure all drop operations are complete
+    console.log('Waiting before reinitializing database tables...');
+    await new Promise(resolve => setTimeout(resolve, 1000)); 
+    
     console.log('Reinitializing database tables after reset');
     await initializeTables();
     
