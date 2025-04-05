@@ -378,7 +378,7 @@ export const cleanupVerifiedOTP = async (email) => {
   }
 };
 
-// Insert a new user
+// Update insertUser to respect role-based permissions and handle RLS policies
 export const insertUser = async (userData) => {
   try {
     // Debug: log users table
@@ -386,6 +386,18 @@ export const insertUser = async (userData) => {
     
     const now = Date.now();
     const userId = userData.id || 'user_' + Math.random().toString(36).substring(2, 9);
+    
+    // Ensure role is set properly - default to 'Unverified' if not provided or invalid
+    // This aligns with the RLS self-registration policy
+    let userRole = 'Unverified'; // Default
+    
+    // Make sure role is one of the allowed values
+    const validRoles = ['President', 'Treasurer', 'Member', 'Tenant', 'Unverified'];
+    if (userData.role && typeof userData.role === 'string' && validRoles.includes(userData.role)) {
+      userRole = userData.role;
+    }
+    
+    console.log(`[database][insertUser] Using role: "${userRole}" for user: ${userId}`);
     
     const { error } = await supabase
       .from('users')
@@ -395,6 +407,7 @@ export const insertUser = async (userData) => {
         display_name: userData.displayName || userData.display_name || '',
         password: userData.password,  // Note: In production, store hashed passwords
         society: userData.society || '',
+        role: userRole, // Use validated role value
         is_logged_in: userData.isLoggedIn || userData.is_logged_in || false,
         created_at: now,
         updated_at: now
@@ -402,6 +415,10 @@ export const insertUser = async (userData) => {
       
     if (error) {
       console.error('Error inserting user:', error);
+      // Check if this is an RLS policy violation
+      if (error.code === 'PGRST301') {
+        throw new Error('Insufficient permissions to create user with this role.');
+      }
       throw error;
     }
     
@@ -470,6 +487,7 @@ export const updateUser = async (userId, userData) => {
   try {
     const now = Date.now();
     
+    // We can't update role here - that should be a separate privileged operation
     const { error } = await supabase
       .from('users')
       .update({
@@ -481,6 +499,10 @@ export const updateUser = async (userId, userData) => {
       
     if (error) {
       console.error('Error updating user:', error);
+      // Check for RLS policy violation
+      if (error.code === 'PGRST301') {
+        throw new Error('You can only update your own profile.');
+      }
       throw error;
     }
     
@@ -676,7 +698,7 @@ export const deleteDraftPost = async (id) => {
   }
 };
 
-// Create user account - combines OTP and user creation
+// Update createUserAccount to respect the self-registration policy
 export const createUserAccount = async (userData) => {
   try {
     // Debug: log tables before creating account
@@ -723,6 +745,7 @@ export const createUserAccount = async (userData) => {
       displayName: userData.displayName || '',
       password: userData.password,
       society: userData.society || '',
+      role: 'Unverified', // Explicitly set role to Unverified for self-registration
       createdAt: Date.now()
     };
     
@@ -806,6 +829,7 @@ export const verifyOTP = async (userId, otp, isRegistration = true) => {
             display_name: userData.displayName,
             password: userData.password,
             society: userData.society,
+            role: userData.role || 'Unverified', // Ensure role is passed correctly
             is_logged_in: true  // Set user as logged in
           });
           console.log(`[database][verifyOTP] User inserted into database: ${userId}`);
@@ -868,6 +892,16 @@ export const verifyOTP = async (userId, otp, isRegistration = true) => {
         console.log(`[database][verifyOTP] Login verification for existing user: ${userId}`);
         try {
           await updateUserLoginStatus(userId, true);
+          
+          // Sync with MongoDB to ensure user exists there too
+          try {
+            console.log(`[database][verifyOTP] Syncing user with MongoDB during login: ${userId}`);
+            await syncUserWithMongoDB(userId);
+            console.log(`[database][verifyOTP] Successfully synced user with MongoDB: ${userId}`);
+          } catch (syncError) {
+            console.error(`[database][verifyOTP] Failed to sync user with MongoDB during login:`, syncError);
+            // Continue despite sync error - will retry later
+          }
           
           return {
             success: true,
@@ -1401,6 +1435,173 @@ export const cleanupExpiredOTPs = async () => {
   }
 };
 
+// Add a new function to update user roles (for admins)
+export const updateUserRole = async (userId, newRole) => {
+  try {
+    // Only Presidents and Treasurers can update roles
+    const now = Date.now();
+    
+    const { error } = await supabase
+      .from('users')
+      .update({
+        role: newRole,
+        updated_at: now
+      })
+      .eq('id', userId);
+      
+    if (error) {
+      console.error('Error updating user role:', error);
+      // Check for RLS policy violation
+      if (error.code === 'PGRST301') {
+        throw new Error('Insufficient permissions to update user roles.');
+      }
+      throw error;
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error in updateUserRole:', error);
+    throw error;
+  }
+};
+
+// Add a function to create posts with proper respect for RLS
+export const createPost = async (postData) => {
+  try {
+    // Get current user role to inform the user about post approval
+    const currentUser = await getCurrentUser();
+    const requiresApproval = !currentUser || 
+      (currentUser.role !== 'President' && currentUser.role !== 'Treasurer');
+    
+    const { data, error } = await supabase
+      .from('posts')
+      .insert({
+        id: postData.id || `post_${Date.now()}`,
+        user_id: postData.userId,
+        society_id: postData.societyId,
+        title: postData.title,
+        content: postData.content,
+        image_urls: postData.imageUrls || null,
+        // Presidents and Treasurers' posts are auto-approved, others are pending
+        approval_status: requiresApproval ? 'pending' : 'approved',
+        is_global: postData.isGlobal || false,
+        has_challenge: postData.hasChallenge || false
+      })
+      .select();
+      
+    if (error) {
+      console.error('Error creating post:', error);
+      // Check for RLS policy violation
+      if (error.code === 'PGRST301') {
+        throw new Error('Insufficient permissions to create posts.');
+      }
+      throw error;
+    }
+    
+    return { 
+      success: true, 
+      post: data[0],
+      requiresApproval
+    };
+  } catch (error) {
+    console.error('Error in createPost:', error);
+    throw error;
+  }
+};
+
+// Add a function to approve posts (for Presidents)
+export const approvePost = async (postId, approved = true, notes = '') => {
+  try {
+    const { error } = await supabase
+      .from('posts')
+      .update({
+        approval_status: approved ? 'approved' : 'rejected',
+        approval_notes: notes,
+        updated_at: new Date()
+      })
+      .eq('id', postId);
+      
+    if (error) {
+      console.error('Error approving post:', error);
+      // Check for RLS policy violation
+      if (error.code === 'PGRST301') {
+        throw new Error('Only Presidents can approve posts.');
+      }
+      throw error;
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error in approvePost:', error);
+    throw error;
+  }
+};
+
+// Add function to get posts respecting visibility rules
+export const getPosts = async (societyId = null, limit = 50) => {
+  try {
+    let query = supabase
+      .from('posts')
+      .select(`
+        *,
+        user:user_id (display_name, role)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (societyId) {
+      query = query.eq('society_id', societyId);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching posts:', error);
+      throw error;
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error in getPosts:', error);
+    return [];
+  }
+};
+
+// Add a function to create events (for Presidents and Treasurers)
+export const createEvent = async (eventData) => {
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .insert({
+        id: eventData.id || `event_${Date.now()}`,
+        title: eventData.title,
+        description: eventData.description,
+        society_id: eventData.societyId,
+        location: eventData.location,
+        date: eventData.date,
+        end_date: eventData.endDate,
+        organizer_id: eventData.organizerId,
+        status: eventData.status || 'scheduled',
+        is_intersociety: eventData.isIntersociety || false
+      })
+      .select();
+      
+    if (error) {
+      console.error('Error creating event:', error);
+      // Check for RLS policy violation
+      if (error.code === 'PGRST301') {
+        throw new Error('Only Presidents and Treasurers can create events.');
+      }
+      throw error;
+    }
+    
+    return { success: true, event: data[0] };
+  } catch (error) {
+    console.error('Error in createEvent:', error);
+    throw error;
+  }
+};
+
 // Export default object with all functions
 export default {
   initDatabase,
@@ -1436,5 +1637,10 @@ export default {
   getDataFromDatabase,
   executeQuery,
   updateUserLoginStatus,
-  cleanupExpiredOTPs
+  cleanupExpiredOTPs,
+  updateUserRole,
+  createPost,
+  approvePost,
+  getPosts,
+  createEvent
 };

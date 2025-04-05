@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS users (
   display_name TEXT,
   password TEXT NOT NULL,
   society TEXT,
-  role TEXT NOT NULL DEFAULT 'Member' CHECK (role IN ('President', 'Treasurer', 'Member', 'Tenant', 'Unverified')),
+  role TEXT NOT NULL DEFAULT 'Unverified' CHECK (role IN ('President', 'Treasurer', 'Member', 'Tenant', 'Unverified')),
   is_logged_in BOOLEAN DEFAULT FALSE,
   created_at BIGINT NOT NULL,
   updated_at BIGINT NOT NULL
@@ -251,12 +251,34 @@ CREATE INDEX IF NOT EXISTS idx_challenge_attempts_date ON challenge_attempts(att
 CREATE INDEX IF NOT EXISTS idx_challenge_attempts_verified ON challenge_attempts(verified);
 
 -- Security rules based on user roles
--- Example RLS policy for users table
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+-- Disable RLS for users table (allowing unrestricted access)
+ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 
--- Users can read all other users but only update their own profile
+-- User RLS policies are now removed/disabled
+-- Note: If you need to re-enable security later, uncomment and run these policies
+/*
 CREATE POLICY users_select_policy ON users FOR SELECT USING (true);
 CREATE POLICY users_update_policy ON users FOR UPDATE USING (auth.uid()::text = id);
+CREATE POLICY users_self_registration_policy ON users 
+  FOR INSERT WITH CHECK (
+    role = 'Unverified'
+  );
+CREATE POLICY users_admin_insert_policy ON users 
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE id = auth.uid()::text AND role IN ('President', 'Treasurer')
+    )
+  );
+CREATE POLICY users_member_invite_policy ON users 
+  FOR INSERT WITH CHECK (
+    role = 'Unverified' AND
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE id = auth.uid()::text AND role IN ('Member')
+    )
+  );
+*/
 
 -- Post policies based on role
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
