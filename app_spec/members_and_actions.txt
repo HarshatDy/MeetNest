@@ -1,0 +1,83 @@
+President - Manages society, events, and posts.
+
+Treasurer - Handles financial aspects and society-related activities.
+
+Member - General user, engages in events, tournaments, and community interactions.
+
+Temporary Resident (Tenant) - Limited access, can join events, post updates, and participate in challenges.
+
+
+Key Actions:
+
+Post Creation - Users create posts on local/global timelines.
+
+Event Management - Presidents create and manage events, others can RSVP and participate.
+
+Tournament Participation - Members and tenants join and track tournaments.
+
+Challenge System - Users challenge each other in activities.
+
+Society Management - President/Treasurer manages community rules and announcements.
+
+User Profile Management - Users update their profiles, view history, and achievements.
+
+Sequences:
+
+@startuml
+
+actor President
+actor Treasury
+actor Resident
+actor SubResident
+actor Temp
+actor Unverified
+entity NeighborlyApp
+
+== Post Creation ==
+President -> NeighborlyApp: Create Post
+Treasury -> NeighborlyApp: Create Post
+Resident -> NeighborlyApp: Create Post
+SubResident -> NeighborlyApp: Create Post
+Temp -> NeighborlyApp: Create Post
+Unverified -> NeighborlyApp: Request Post Approval
+NeighborlyApp -> NeighborlyApp: Store & Display Post
+
+== Event Management ==
+President -> NeighborlyApp: Create/Manage Event
+Resident -> NeighborlyApp: RSVP to Event
+SubResident -> NeighborlyApp: RSVP to Event
+Temp -> NeighborlyApp: RSVP to Event
+Unverified -> NeighborlyApp: Request RSVP Approval
+NeighborlyApp -> NeighborlyApp: Update Event Status
+
+== Tournament Participation ==
+Resident -> NeighborlyApp: Join Tournament
+SubResident -> NeighborlyApp: Join Tournament
+Temp -> NeighborlyApp: Join Tournament
+Unverified -> NeighborlyApp: Request Tournament Entry Approval
+NeighborlyApp -> NeighborlyApp: Update Tournament Standings
+
+== Challenge System ==
+Resident -> NeighborlyApp: Challenge a Friend
+SubResident -> NeighborlyApp: Challenge a Friend
+Temp -> NeighborlyApp: Challenge a Friend
+Unverified -> NeighborlyApp: Request Challenge Approval
+NeighborlyApp -> NeighborlyApp: Validate & Schedule Challenge
+
+== Society Management ==
+President -> NeighborlyApp: Update Society Rules
+Treasury -> NeighborlyApp: Manage Community Finances
+NeighborlyApp -> NeighborlyApp: Apply Changes
+
+== User Profile Management ==
+President -> NeighborlyApp: Update Profile
+Treasury -> NeighborlyApp: Update Profile
+Resident -> NeighborlyApp: Update Profile
+SubResident -> NeighborlyApp: Update Profile
+Temp -> NeighborlyApp: Update Profile
+Unverified -> NeighborlyApp: Request Profile Verification
+NeighborlyApp -> NeighborlyApp: Store and Display Profile Changes
+
+@enduml
+
+

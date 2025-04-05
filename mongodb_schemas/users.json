@@ -1,35 +1,50 @@
 {
-    "title": "User",
-    "bsonType": "object",
-    "required": ["_id", "email", "societies"],
-    "properties": {
-      "_id": {
+  "title": "User",
+  "bsonType": "object",
+  "required": ["_id", "email", "societies", "role"],
+  "properties": {
+    "_id": {
+      "bsonType": "string"
+    },
+    "email": {
+      "bsonType": "string"
+    },
+    "displayName": {
+      "bsonType": "string"
+    },
+    "societies": {
+      "bsonType": "array",
+      "items": {
         "bsonType": "string"
-      },
-      "email": {
-        "bsonType": "string"
-      },
-      "displayName": {
-        "bsonType": "string"
-      },
-      "societies": {
-        "bsonType": "array",
-        "items": {
-          "bsonType": "string"
+      }
+    },
+    "role": {
+      "bsonType": "string",
+      "enum": ["President", "Treasurer", "Member", "Tenant", "Unverified"]
+    },
+    "points": {
+      "bsonType": "int"
+    },
+    "achievements": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "object",
+        "properties": {
+          "id": { "bsonType": "string" },
+          "dateUnlocked": { "bsonType": "date" }
         }
-      },
-      "points": {
-        "bsonType": "int"
-      },
-      "achievements": {
-        "bsonType": "array",
-        "items": {
-          "bsonType": "object",
-          "properties": {
-            "id": { "bsonType": "string" },
-            "dateUnlocked": { "bsonType": "date" }
-          }
+      }
+    },
+    "activityHistory": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "object",
+        "properties": {
+          "type": { "bsonType": "string" },
+          "date": { "bsonType": "date" },
+          "details": { "bsonType": "object" }
         }
       }
     }
   }
+}

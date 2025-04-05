@@ -3,7 +3,7 @@
  */
 
 // Set to false to disable debug logging
-const DEBUG_ENABLED = false;
+export const DEBUG_ENABLED = false;
 
 export const Logger = {
   /**
@@ -67,7 +67,7 @@ export const Logger = {
    * @param {any} params - Navigation parameters
    */
   navigation: (action, target, params = null) => {
-    if (!DEBUG_ENABLED) return;
+    if (!DEBUG_ENABLED) return; // Ensure debug logs are disabled
     
     const timestamp = new Date().toISOString();
     const paramsString = params ? `: ${JSON.stringify(params, null, 2)}` : '';

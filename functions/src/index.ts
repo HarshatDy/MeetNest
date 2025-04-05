@@ -10,7 +10,7 @@ import {onRequest} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import express, {Request, Response} from "express";
 import cors from "cors";
-import {MongoClient} from "mongodb";
+import {MongoClient, ObjectId} from "mongodb";
 import {loadSchemas} from "./schemas";
 // Add os and dns modules for IP address lookup
 import * as os from "os";
@@ -207,16 +207,52 @@ app.get("/api/users/:userId", async (req: Request, res: Response) => {
     const collection = db.collection("users");
 
     const userId = req.params.userId;
-    const user = await collection.findOne({id: userId});
+    let query = {};
+
+    // Check if userId is a valid ObjectId
+    try {
+      if (ObjectId.isValid(userId)) {
+        query = {
+          $or: [
+            {_id: new ObjectId(userId)},
+            {id: userId},
+          ],
+        };
+      } else {
+        query = {id: userId};
+      }
+    } catch (err) {
+      // If userId is not a valid ObjectId, just search by id field
+      query = {id: userId};
+    }
+
+    const user = await collection.findOne(query);
 
     if (!user) {
       return res.status(404).json({error: "User not found"});
     }
 
-    return res.status(200).json(user);
+    return res.status(200).json({user});
   } catch (error) {
     logger.error("Error fetching user:", error);
     return res.status(500).json({error: "Failed to fetch user"});
+  }
+});
+
+app.get("/api/users", async (req: Request, res: Response) => {
+  try {
+    const client = await connectToDatabase(); // Connect to MongoDB
+    const db = client.db(dbName); // Use the database name
+    const collection = db.collection("users"); // Access the 'users' collection
+
+    // Fetch all users
+    const users = await collection.find({}).toArray();
+
+    // Return the users as a JSON response
+    res.status(200).json({users});
+  } catch (error) {
+    logger.error("Error fetching all users:", error);
+    res.status(500).json({error: "Failed to fetch users"});
   }
 });
 
@@ -226,21 +262,196 @@ app.post("/api/users", async (req: Request, res: Response) => {
     const db = client.db(dbName);
     const collection = db.collection("users");
 
+    // Check if user already exists
+    if (req.body.email) {
+      const existingUser = await collection.findOne({email: req.body.email});
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          message: "A user with this email already exists",
+        });
+      }
+    }
+
+    // Make sure _id is used if provided
     const userData = {
       ...req.body,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
+    // Ensure id and _id are consistent if needed
+    if (userData.id && !userData._id) {
+      userData._id = userData.id;
+    }
+
     const result = await collection.insertOne(userData);
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       id: result.insertedId,
       user: userData,
     });
   } catch (error) {
     logger.error("Error creating user:", error);
-    res.status(500).json({error: "Failed to create user"});
+    return res.status(500).json({error: "Failed to create user"});
+  }
+});
+
+app.put("/api/users/:userId", async (req: Request, res: Response) => {
+  try {
+    const client = await connectToDatabase();
+    const db = client.db(dbName);
+    const collection = db.collection("users");
+
+    const userId = req.params.userId;
+    const updates = {
+      ...req.body,
+      updatedAt: new Date(),
+    };
+
+    let query = {};
+
+    // Check if userId is a valid ObjectId
+    try {
+      if (ObjectId.isValid(userId)) {
+        query = {
+          $or: [
+            {_id: new ObjectId(userId)},
+            {id: userId},
+          ],
+        };
+      } else {
+        query = {id: userId};
+      }
+    } catch (err) {
+      // If userId is not a valid ObjectId, just search by id field
+      query = {id: userId};
+    }
+
+    const result = await collection.updateOne(
+      query,
+      {$set: updates},
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      updatedFields: Object.keys(updates),
+    });
+  } catch (error) {
+    logger.error("Error updating user:", error);
+    return res.status(500).json({error: "Failed to update user"});
+  }
+});
+
+// Email verification endpoint
+app.post("/api/users/verify-email", async (req: Request, res: Response) => {
+  try {
+    const client = await connectToDatabase();
+    const db = client.db(dbName);
+    const collection = db.collection("users");
+
+    const {userId} = req.body;
+    // Note: verificationCode is received but not used in this implementation
+
+    let query = {};
+
+    // Check if userId is a valid ObjectId
+    try {
+      if (ObjectId.isValid(userId)) {
+        query = {
+          $or: [
+            {_id: new ObjectId(userId)},
+            {id: userId},
+          ],
+        };
+      } else {
+        query = {id: userId};
+      }
+    } catch (err) {
+      // If userId is not a valid ObjectId, just search by id field
+      query = {id: userId};
+    }
+
+    const result = await collection.updateOne(
+      query,
+      {
+        $set: {
+          emailVerified: true,
+          updatedAt: new Date(),
+        },
+      },
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Email verified successfully",
+    });
+  } catch (error) {
+    logger.error("Error verifying email:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to verify email",
+    });
+  }
+});
+
+// Login endpoint for MongoDB authentication
+app.post("/api/users/login", async (req: Request, res: Response) => {
+  try {
+    const client = await connectToDatabase();
+    const db = client.db(dbName);
+    const collection = db.collection("users");
+
+    const {email} = req.body;
+    // Note: password is received but not used in this implementation
+
+    // Find user by email
+    const user = await collection.findOne({email});
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+
+    // In a real implementation, you would verify the password here
+    // Since we're using SQLite for actual auth, we just check the user exists
+
+    return res.status(200).json({
+      success: true,
+      message: "Authentication successful",
+      userId: user._id || user.id,
+      user: {
+        id: user._id || user.id,
+        email: user.email,
+        displayName: user.displayName,
+        societies: user.societies || [],
+        points: user.points || 0,
+        achievements: user.achievements || [],
+      },
+    });
+  } catch (error) {
+    logger.error("Error authenticating user:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Authentication failed",
+    });
   }
 });
 

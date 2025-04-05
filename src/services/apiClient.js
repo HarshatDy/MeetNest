@@ -114,6 +114,38 @@ export async function createUser(userData) {
   return apiRequest('/api/users', 'POST', userData);
 }
 
+export async function updateUser(userId, userData) {
+  return apiRequest(`/api/users/${userId}`, 'PUT', userData);
+}
+
+export async function deleteUser(userId) {
+  return apiRequest(`/api/users/${userId}`, 'DELETE');
+}
+
+export async function loginUser(credentials) {
+  return apiRequest('/api/users/login', 'POST', credentials);
+}
+
+export async function verifyUserEmail(userId, verificationCode) {
+  return apiRequest('/api/users/verify-email', 'POST', { userId, verificationCode });
+}
+
+// New function to get all users
+export async function getAllUsers() {
+  try {
+    const online = await isOnline();
+    if (!online) {
+      throw new Error('Network connection unavailable. Please check your internet connection.');
+    }
+
+    const response = await apiRequest('/api/users', 'GET');
+    return response.users || [];
+  } catch (error) {
+    console.error('[apiClient][getAllUsers] Error fetching all users:', error.message);
+    throw new Error(`Failed to fetch users: ${error.message}`);
+  }
+}
+
 // Posts endpoints
 export async function getPosts(societyId = 'default', limit = 20) {
   return apiRequest(`/api/posts?societyId=${societyId}&limit=${limit}`);
@@ -167,6 +199,10 @@ export async function testConnection() {
 export default {
   getUser,
   createUser,
+  updateUser,
+  deleteUser,
+  loginUser,
+  verifyUserEmail,
   getPosts,
   createPost,
   getTournaments,
@@ -174,5 +210,6 @@ export default {
   createTournamentResult,
   getLeaderboard,
   getEvents,
-  testConnection
+  testConnection,
+  getAllUsers
 };

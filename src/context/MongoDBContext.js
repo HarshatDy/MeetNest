@@ -1,115 +1,141 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { connectToDatabase, closeConnection } from '../config/mongodb';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { testConnection } from '../services/apiClient';
 import { Logger } from '../../utils/Logger';
-import apiClient from '../services/apiClient';
 
-const MongoDBContext = createContext(null);
+const MongoDBContext = createContext();
 
-const RETRY_DELAY = 5000; // 5 seconds between retries
+export const useMongoDb = () => useContext(MongoDBContext);
 
-export function MongoDBProvider({ children }) {
+export const MongoDBProvider = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [offlineMode, setOfflineMode] = useState(false);
-  const [retryAttempt, setRetryAttempt] = useState(0);
-  const [retryTimerId, setRetryTimerId] = useState(null);
+  const [lastSyncTime, setLastSyncTime] = useState(null);
 
-  // Function to connect to MongoDB API
-  const connect = useCallback(async () => {
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        setIsLoading(true);
+        const result = await testConnection();
+        setIsConnected(true);
+        setLastSyncTime(new Date());
+        Logger.debug('MongoDBContext', 'MongoDB connection successful', result);
+
+        // Fetch and print all users from MongoDB
+        const { getAllUsers } = require('../services/mongoService');
+        const users = await getAllUsers();
+        if (users.length === 0) {
+          console.warn('[MongoDBContext] No users fetched. Possibly offline or server issue.');
+        } else {
+          console.log('[MongoDBContext] All users from MongoDB:', users);
+        }
+      } catch (error) {
+        setIsConnected(false);
+        Logger.error('MongoDBContext', 'MongoDB connection failed', error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkConnection();
+
+    // Set up periodic connection check
+    const interval = setInterval(checkConnection, 5 * 60 * 1000); // every 5 minutes
+    return () => clearInterval(interval);
+  }, []);
+
+  // Function to manually retry connection
+  const retryConnection = async () => {
     try {
       setIsLoading(true);
-      
-      // Try to connect
-      await connectToDatabase();
-      
-      // Success - update state
+      const result = await testConnection();
       setIsConnected(true);
-      setOfflineMode(false);
-      setError(null);
-      setRetryAttempt(0);
-      Logger.debug('MongoDBContext', 'Connected to MongoDB API');
-      
-      // Clear any retry timers
-      if (retryTimerId) {
-        clearTimeout(retryTimerId);
-        setRetryTimerId(null);
-      }
-    } catch (err) {
-      Logger.error('MongoDBContext', 'Failed to connect to MongoDB API:', err);
-      setError(err.message);
+      setLastSyncTime(new Date());
+      Logger.debug('MongoDBContext', 'MongoDB connection successful on retry', result);
+      return true;
+    } catch (error) {
       setIsConnected(false);
-      
-      // After 3 failed attempts, switch to offline mode
-      if (retryAttempt >= 2) {
-        Logger.warn('MongoDBContext', 'Switching to offline mode after failed connection attempts');
-        setOfflineMode(true);
-      } else {
-        // Schedule another retry
-        const timerId = setTimeout(() => {
-          setRetryAttempt(prev => prev + 1);
-          connect();
-        }, RETRY_DELAY);
-        setRetryTimerId(timerId);
-      }
+      Logger.error('MongoDBContext', 'MongoDB connection retry failed', error);
+      return false;
     } finally {
       setIsLoading(false);
     }
-  }, [retryAttempt, retryTimerId]);
-  
-  // Try to reconnect manually (can be called from UI)
-  const reconnect = useCallback(() => {
-    // Reset state and trigger new connection
-    setRetryAttempt(0);
-    setOfflineMode(false);
-    connect();
-  }, [connect]);
-  
-  // Check API status
-  const checkApiStatus = useCallback(async () => {
+  };
+
+  // Function to force sync pending changes
+  const syncPendingChanges = async () => {
     try {
-      const status = await apiClient.testConnection();
-      return status;
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error.message,
-        timestamp: new Date().toISOString()
-      };
-    }
-  }, []);
+      if (!isConnected) {
+        const connected = await retryConnection();
+        if (!connected) {
+          return {
+            success: false,
+            message: 'Cannot sync: MongoDB connection not available'
+          };
+        }
+      }
 
-  useEffect(() => {
-    // Connect to MongoDB API when the provider mounts
-    connect();
-
-    // Close API connection when component unmounts
-    return () => {
-      if (retryTimerId) {
-        clearTimeout(retryTimerId);
+      const { getPreference, setPreference } = require('../utils/database');
+      const pendingUpdates = await getPreference('pending_mongo_updates');
+      
+      if (!pendingUpdates) {
+        return {
+          success: true,
+          message: 'No pending changes to sync'
+        };
       }
       
-      closeConnection()
-        .then(() => Logger.debug('MongoDBContext', 'MongoDB API connection closed'))
-        .catch(err => Logger.error('MongoDBContext', 'Error closing MongoDB API connection:', err));
-    };
-  }, [connect, retryTimerId]);
+      const updates = JSON.parse(pendingUpdates);
+      const { updateUser } = require('../services/mongoService');
+      
+      // Process each pending update
+      const updatePromises = Object.entries(updates).map(async ([userId, userData]) => {
+        try {
+          await updateUser(userId, userData);
+          return userId;
+        } catch (error) {
+          Logger.error('MongoDBContext', `Failed to sync updates for user ${userId}`, error);
+          throw error;
+        }
+      });
+      
+      const syncedUserIds = await Promise.all(updatePromises);
+      
+      // Remove synced users from pending updates
+      const newPendingUpdates = { ...updates };
+      syncedUserIds.forEach(userId => {
+        delete newPendingUpdates[userId];
+      });
+      
+      await setPreference('pending_mongo_updates', Object.keys(newPendingUpdates).length > 0 
+        ? JSON.stringify(newPendingUpdates) 
+        : null);
+      
+      setLastSyncTime(new Date());
+      
+      return {
+        success: true,
+        message: `Synced ${syncedUserIds.length} pending updates`
+      };
+    } catch (error) {
+      Logger.error('MongoDBContext', 'Failed to sync pending changes', error);
+      return {
+        success: false,
+        message: 'Failed to sync pending changes: ' + error.message
+      };
+    }
+  };
 
   return (
-    <MongoDBContext.Provider
-      value={{
-        isConnected,
-        isLoading,
-        error,
-        offlineMode,
-        reconnect,
-        checkApiStatus,
-        retryAttempt
-      }}
-    >
+    <MongoDBContext.Provider value={{ 
+      isConnected, 
+      isLoading, 
+      lastSyncTime,
+      retryConnection,
+      syncPendingChanges
+    }}>
       {children}
     </MongoDBContext.Provider>
   );
-}
+};
 
-export const useMongoDB = () => useContext(MongoDBContext);
+export default MongoDBProvider;

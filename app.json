@@ -31,8 +31,6 @@
       "safeAreaInsets": true
     },
     "newArchEnabled": true,
-    "plugins": [
-      "expo-sqlite"
-    ]
+    "plugins": []
   }
 }

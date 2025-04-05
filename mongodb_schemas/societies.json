@@ -1,0 +1,35 @@
+{
+  "title": "Society",
+  "bsonType": "object",
+  "required": ["_id", "name"],
+  "properties": {
+    "_id": {
+      "bsonType": "string"
+    },
+    "name": {
+      "bsonType": "string"
+    },
+    "description": {
+      "bsonType": "string"
+    },
+    "location": {
+      "bsonType": "object",
+      "properties": {
+        "latitude": { "bsonType": "double" },
+        "longitude": { "bsonType": "double" }
+      }
+    },
+    "presidentId": {
+      "bsonType": "string"
+    },
+    "treasurerId": {
+      "bsonType": "string"
+    },
+    "memberCount": {
+      "bsonType": "int"
+    },
+    "createdAt": {
+      "bsonType": "date"
+    }
+  }
+}
