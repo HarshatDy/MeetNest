@@ -1,4 +1,4 @@
-import React, { useEffect, useContext } from 'react';
+import React, { useEffect, useContext, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -14,27 +14,21 @@ import { Logger, DEBUG_ENABLED } from '../../utils/Logger';
 import { AppContext } from '../../App';
 import { NavigationHelper } from '../../utils/NavigationHelper';
 import { useRootNavigation } from '../../hooks/useRootNavigation';
+import { useUser } from '../../contexts/UserContext';
 
-const USER = {
-  id: '101',
-  name: 'John Doe',
-  avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
-  role: 'President',
-  society: 'Green Meadows',
-  joinDate: '2020-05-12',
-  activities: 42,
-  challenges: 15,
-  points: 2340,
-  badges: [
-    { id: '1', name: 'Community Leader', icon: 'ribbon' },
-    { id: '2', name: 'Event Organizer', icon: 'calendar' },
-    { id: '3', name: 'Sports Champion', icon: 'football' }
-  ],
-  recentActivities: [
-    { id: '1', type: 'post', title: 'Annual society maintenance', date: '2023-08-12' },
-    { id: '2', type: 'event', title: 'Summer Sports Camp', date: '2023-08-01' },
-    { id: '3', type: 'challenge', title: 'Table Tennis Tournament', date: '2023-07-25' }
-  ]
+// Define a default user object for fallback
+const DEFAULT_USER = {
+  id: '',
+  name: 'Guest User',
+  avatar: 'https://randomuser.me/api/portraits/lego/1.jpg',
+  role: 'Resident',
+  society: 'Loading...',
+  joinDate: new Date().toISOString(),
+  activities: 0,
+  challenges: 0,
+  points: 0,
+  badges: [],
+  recentActivities: []
 };
 
 export default function ProfileScreen({ navigation }) {
@@ -44,6 +38,88 @@ export default function ProfileScreen({ navigation }) {
   // Get the handleLogout function from AppContext
   const { handleLogout } = useContext(AppContext);
   
+  // Add this line to get the current user data
+  const { user } = useUser();
+  
+  // Create a state to hold the formatted user data
+  const [userData, setUserData] = useState(DEFAULT_USER);
+  
+  // Now you can access user.id to get the current user ID
+  const userId = user?.id;
+  
+  useEffect(() => {
+    if (user) {
+      console.log('Current user details:', JSON.stringify(user, null, 2));
+      Logger.debug('ProfileScreen', 'User context data', user);
+      
+      // Log specific user properties if they exist
+      if (user.id) console.log('User ID:', user.id);
+      if (user.email) console.log('User Email:', user.email);
+      if (user.display_name) console.log('User Name:', user.display_name);
+      if (user.role) console.log('User Role:', user.role);
+      if (user.society) console.log('User Society:', user.society);
+      
+      // Format user data from context to match UI requirements
+      formatUserData(user);
+      
+      // Here you can fetch user data from MongoDB using this ID
+      if (user.id) {
+        fetchUserDataFromMongoDB(user.id);
+      }
+    } else {
+      console.log('No user data available in context');
+      // Replace Logger.warn with console.warn since it's not available
+      console.warn('ProfileScreen: No user data in context');
+    }
+  }, [user]);
+  
+  // Function to format user data from context to match UI expectations
+  const formatUserData = (contextUser) => {
+    if (!contextUser) return;
+    
+    const formattedUser = {
+      id: contextUser.id || DEFAULT_USER.id,
+      name: contextUser.display_name || contextUser.name || DEFAULT_USER.name,
+      avatar: contextUser.avatar_url || contextUser.avatar || DEFAULT_USER.avatar,
+      role: contextUser.role || DEFAULT_USER.role,
+      society: contextUser.society || DEFAULT_USER.society,
+      joinDate: contextUser.created_at || contextUser.joinDate || DEFAULT_USER.joinDate,
+      activities: contextUser.activities_count || contextUser.activities || DEFAULT_USER.activities,
+      challenges: contextUser.challenges_count || contextUser.challenges || DEFAULT_USER.challenges,
+      points: contextUser.points || DEFAULT_USER.points,
+      badges: contextUser.badges || DEFAULT_USER.badges,
+      recentActivities: contextUser.recent_activities || contextUser.recentActivities || DEFAULT_USER.recentActivities
+    };
+    
+    Logger.debug('ProfileScreen', 'Formatted user data', formattedUser);
+    setUserData(formattedUser);
+  };
+  
+  // Add a function to fetch user data from MongoDB
+  const fetchUserDataFromMongoDB = async (id) => {
+    if (!id) {
+      // Replace Logger.warn with console.warn
+      console.warn('ProfileScreen: Attempted to fetch user data without ID');
+      return;
+    }
+    
+    try {
+      // Import the service that communicates with MongoDB
+      const { getUser } = require('../../src/services/mongoService');
+      const mongoUserData = await getUser(id);
+      console.log('User data from MongoDB:', JSON.stringify(mongoUserData, null, 2));
+      Logger.debug('ProfileScreen', 'MongoDB user data retrieved', mongoUserData);
+      
+      // Update userData with MongoDB data
+      if (mongoUserData) {
+        formatUserData({...user, ...mongoUserData});
+      }
+    } catch (error) {
+      Logger.error('ProfileScreen', 'Error fetching user data', error);
+      console.error('Failed to fetch user data:', error.message);
+    }
+  };
+
   // Add useEffect for detailed navigator debugging on mount
   useEffect(() => {
     if (DEBUG_ENABLED) { // Wrap debug logic with the flag
@@ -108,25 +184,25 @@ export default function ProfileScreen({ navigation }) {
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
-          <Image source={{ uri: USER.avatar }} style={styles.avatar} />
+          <Image source={{ uri: userData.avatar }} style={styles.avatar} />
           <View style={styles.userInfo}>
-            <Text style={styles.name}>{USER.name}</Text>
-            <Text style={styles.role}>{USER.role} • {USER.society}</Text>
-            <Text style={styles.joinDate}>Member since {new Date(USER.joinDate).toLocaleDateString()}</Text>
+            <Text style={styles.name}>{userData.name}</Text>
+            <Text style={styles.role}>{userData.role} • {userData.society}</Text>
+            <Text style={styles.joinDate}>Member since {new Date(userData.joinDate).toLocaleDateString()}</Text>
           </View>
         </View>
 
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{USER.activities}</Text>
+            <Text style={styles.statValue}>{userData.activities}</Text>
             <Text style={styles.statLabel}>Activities</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{USER.challenges}</Text>
+            <Text style={styles.statValue}>{userData.challenges}</Text>
             <Text style={styles.statLabel}>Challenges</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{USER.points}</Text>
+            <Text style={styles.statValue}>{userData.points}</Text>
             <Text style={styles.statLabel}>Points</Text>
           </View>
         </View>
@@ -139,14 +215,18 @@ export default function ProfileScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           <View style={styles.badgesContainer}>
-            {USER.badges.map(badge => (
-              <View key={badge.id} style={styles.badge}>
-                <View style={styles.badgeIcon}>
-                  <Ionicons name={badge.icon} size={24} color="#007AFF" />
+            {userData.badges && userData.badges.length > 0 ? (
+              userData.badges.map(badge => (
+                <View key={badge.id} style={styles.badge}>
+                  <View style={styles.badgeIcon}>
+                    <Ionicons name={badge.icon} size={24} color="#007AFF" />
+                  </View>
+                  <Text style={styles.badgeName}>{badge.name}</Text>
                 </View>
-                <Text style={styles.badgeName}>{badge.name}</Text>
-              </View>
-            ))}
+              ))
+            ) : (
+              <Text style={styles.emptyStateText}>No badges earned yet</Text>
+            )}
           </View>
         </View>
 
@@ -157,24 +237,28 @@ export default function ProfileScreen({ navigation }) {
               <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
           </View>
-          {USER.recentActivities.map(activity => (
-            <View key={activity.id} style={styles.activityItem}>
-              <View style={styles.activityIconContainer}>
-                <Ionicons 
-                  name={
-                    activity.type === 'post' ? 'create-outline' :
-                    activity.type === 'event' ? 'calendar-outline' : 'trophy-outline'
-                  } 
-                  size={24} 
-                  color="#007AFF" 
-                />
+          {userData.recentActivities && userData.recentActivities.length > 0 ? (
+            userData.recentActivities.map(activity => (
+              <View key={activity.id} style={styles.activityItem}>
+                <View style={styles.activityIconContainer}>
+                  <Ionicons 
+                    name={
+                      activity.type === 'post' ? 'create-outline' :
+                      activity.type === 'event' ? 'calendar-outline' : 'trophy-outline'
+                    } 
+                    size={24} 
+                    color="#007AFF" 
+                  />
+                </View>
+                <View style={styles.activityInfo}>
+                  <Text style={styles.activityTitle}>{activity.title}</Text>
+                  <Text style={styles.activityDate}>{new Date(activity.date).toLocaleDateString()}</Text>
+                </View>
               </View>
-              <View style={styles.activityInfo}>
-                <Text style={styles.activityTitle}>{activity.title}</Text>
-                <Text style={styles.activityDate}>{new Date(activity.date).toLocaleDateString()}</Text>
-              </View>
-            </View>
-          ))}
+            ))
+          ) : (
+            <Text style={styles.emptyStateText}>No recent activities</Text>
+          )}
         </View>
 
         {/* Logout button */}
@@ -335,5 +419,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     marginLeft: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    padding: 10,
   },
 });

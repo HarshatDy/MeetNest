@@ -133,10 +133,10 @@ export async function verifyUserEmail(userId, verificationCode) {
 // New function to get all users
 export async function getAllUsers() {
   try {
-    const online = await isOnline();
-    if (!online) {
-      throw new Error('Network connection unavailable. Please check your internet connection.');
-    }
+    // const online = await isOnline();
+    // if (!online) {
+    //   throw new Error('Network connection unavailable. Please check your internet connection.');
+    // }
 
     const response = await apiRequest('/api/users', 'GET');
     return response.users || [];

@@ -21,6 +21,29 @@ export const UserProvider = ({ children }) => {
     // Instead, we'll rely on explicit login/registration
   }, []);
 
+  useEffect(() => {
+    const checkForLoggedInUser = async () => {
+      try {
+        setIsLoading(true);
+        // Try to get the current user from authService
+        const userData = await authService.getCurrentUser();
+        
+        if (userData) {
+          setUser(userData);
+          Logger.debug('UserContext', 'Found logged in user on startup', { userId: userData.id });
+        } else {
+          Logger.debug('UserContext', 'No logged in user found');
+        }
+      } catch (error) {
+        Logger.error('UserContext', 'Error checking for logged in user', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkForLoggedInUser();
+  }, []);
+
   // Register a new user
   const register = async (userData) => {
     try {

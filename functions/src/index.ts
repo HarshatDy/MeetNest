@@ -314,14 +314,9 @@ app.put("/api/users/:userId", async (req: Request, res: Response) => {
     // Check if userId is a valid ObjectId
     try {
       if (ObjectId.isValid(userId)) {
-        query = {
-          $or: [
-            {_id: new ObjectId(userId)},
-            {id: userId},
-          ],
-        };
+        query = {_id: new ObjectId(userId)}; // Only use _id if it's a valid
       } else {
-        query = {id: userId};
+        query = {id: userId}; // Otherwise, use id as a string
       }
     } catch (err) {
       // If userId is not a valid ObjectId, just search by id field

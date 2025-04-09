@@ -4,7 +4,6 @@ import apiClient from './apiClient';
 // User operations
 export async function getUser(userId) {
   try {
-    // First list all users for debugging
     console.log(`[mongoService][getUser] Attempting to get user with ID: ${userId}`);
     
     // Get all users first to debug what's available
@@ -12,15 +11,23 @@ export async function getUser(userId) {
     console.log(`[mongoService][getUser] All available users in MongoDB:`, 
       allUsers.map(user => ({ _id: user._id, id: user.id, email: user.email })));
     
-    // Check if user exists in the list with either _id or id matching
-    const userExists = allUsers.some(user => 
-      (user._id && user._id.toString() === userId) || 
-      (user.id && user.id.toString() === userId)
-    );
+    // Prioritize _id for querying - check if userId matches any user's _id
+    const userByMongoId = allUsers.find(user => user._id && user._id.toString() === userId);
     
-    console.log(`[mongoService][getUser] User ${userId} exists in MongoDB? ${userExists}`);
+    if (userByMongoId) {
+      console.log(`[mongoService][getUser] Found user by _id: ${userId}`);
+      return userByMongoId;
+    }
     
-    // Proceed with the regular API call
+    // Fallback to id field if not found by _id
+    const userById = allUsers.find(user => user.id && user.id.toString() === userId);
+    if (userById) {
+      console.log(`[mongoService][getUser] Found user by id: ${userId}`);
+      return userById;
+    }
+    
+    console.log(`[mongoService][getUser] Calling API to get user with ID: ${userId}`);
+    // Call API with the userId - the API should prioritize _id field
     const response = await apiClient.getUser(userId);
     return response.user;
   } catch (error) {
@@ -42,7 +49,18 @@ export async function getAllUsers() {
 
 export async function createUser(userData) {
   try {
+    // Ensure id field is properly set if not already present
+    if (!userData.id && userData._id) {
+      userData.id = userData._id.toString();
+    }
+    
     const response = await apiClient.createUser(userData);
+    
+    // Ensure the returned user has both _id and id properly set
+    if (response.user && response.user._id && !response.user.id) {
+      response.user.id = response.user._id.toString();
+    }
+    
     return response;
   } catch (error) {
     console.error('Error creating user:', error);
@@ -52,7 +70,21 @@ export async function createUser(userData) {
 
 export async function updateUser(userId, userData) {
   try {
-    const response = await apiClient.updateUser(userId, userData);
+    // Ensure we're using the correct ID field - prioritize _id
+    const idToUse = userId;
+    
+    // Ensure id field is consistent with _id if present in update data
+    if (userData._id && !userData.id) {
+      userData.id = userData._id.toString();
+    }
+    
+    const response = await apiClient.updateUser(idToUse, userData);
+    
+    // Ensure the returned user has both _id and id properly set
+    if (response.user && response.user._id && !response.user.id) {
+      response.user.id = response.user._id.toString();
+    }
+    
     return response;
   } catch (error) {
     console.error('Error updating user:', error);
