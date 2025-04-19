@@ -9,6 +9,7 @@ import TournamentsNavigator from './TournamentsNavigator';
 import PostingScreen from '../screens/PostingScreen';
 import EventsNavigator from './EventsNavigator';
 import ProfileNavigator from './ProfileNavigator';
+import { Logger } from '../utils/Logger'; // Import Logger
 
 const Tab = createBottomTabNavigator();
 
@@ -73,6 +74,18 @@ export default function MainTabNavigator() {
       <Tab.Screen 
         name="Post" 
         component={PostingScreen} 
+        options={{ 
+          // ...existing options if any...
+        }}
+        listeners={{
+          tabPress: (e) => {
+            // Use a direct log to ensure this code runs
+            console.log('[MainTabNavigator] Post tab pressed', e);
+            if (Logger && Logger.debug) {
+              Logger.debug('MainTabNavigator', 'Post tab pressed', { target: e.target });
+            }
+          }
+        }}
       />
       <Tab.Screen 
         name="Events" 

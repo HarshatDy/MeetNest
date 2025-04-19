@@ -31,6 +31,24 @@
       "safeAreaInsets": true
     },
     "newArchEnabled": true,
-    "plugins": []
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "config": {
+              "googleMaps": {
+                "apiKey": "${GOOGLE_MAPS_API_KEY}"
+              }
+            }
+          },
+          "ios": {
+            "config": {
+              "googleMapsApiKey": "${GOOGLE_MAPS_API_KEY}"
+            }
+          }
+        }
+      ]
+    ]
   }
 }

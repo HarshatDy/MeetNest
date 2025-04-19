@@ -98,21 +98,46 @@ export default function ProfileScreen({ navigation }) {
   // Add a function to fetch user data from MongoDB
   const fetchUserDataFromMongoDB = async (id) => {
     if (!id) {
-      // Replace Logger.warn with console.warn
       console.warn('ProfileScreen: Attempted to fetch user data without ID');
       return;
     }
     
     try {
       // Import the service that communicates with MongoDB
-      const { getUser } = require('../../src/services/mongoService');
+      const { getUser, getPosts } = require('../../src/services/mongoService');
+      
+      // Fetch basic user data
       const mongoUserData = await getUser(id);
       console.log('User data from MongoDB:', JSON.stringify(mongoUserData, null, 2));
       Logger.debug('ProfileScreen', 'MongoDB user data retrieved', mongoUserData);
       
-      // Update userData with MongoDB data
+      // Fetch user's recent posts/activities
+      const userPosts = await getPosts(mongoUserData.societies?.[0] || 'default', 3);
+      console.log('User posts from MongoDB:', userPosts?.length || 0);
+      
+      // Filter for posts by this user
+      const userActivities = userPosts
+        .filter(post => post.authorId === id || post.authorId === mongoUserData._id)
+        .map(post => ({
+          id: post._id || post.id,
+          type: post.type || 'post',
+          title: post.title || post.content?.substring(0, 30) || 'Untitled Post',
+          date: post.timestamp || post.createdAt,
+          likes: post.likes || 0,
+          comments: post.comments || 0
+        }))
+        .slice(0, 3); // Limit to 3 items for recent activities
+      
+      Logger.debug('ProfileScreen', 'User activities retrieved', { count: userActivities.length });
+      
+      // Update userData with MongoDB data and activities
       if (mongoUserData) {
-        formatUserData({...user, ...mongoUserData});
+        formatUserData({
+          ...user, 
+          ...mongoUserData,
+          recentActivities: userActivities,
+          activities_count: userActivities.length // Update activity count based on real data
+        });
       }
     } catch (error) {
       Logger.error('ProfileScreen', 'Error fetching user data', error);

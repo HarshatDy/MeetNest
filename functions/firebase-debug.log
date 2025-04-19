@@ -1,37 +1,37 @@
-[debug] [2025-04-08T12:32:06.347Z] ----------------------------------------------------------------------
-[debug] [2025-04-08T12:32:06.350Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\hkd27\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --only functions
-[debug] [2025-04-08T12:32:06.350Z] CLI Version:   14.0.1
-[debug] [2025-04-08T12:32:06.350Z] Platform:      win32
-[debug] [2025-04-08T12:32:06.350Z] Node Version:  v22.12.0
-[debug] [2025-04-08T12:32:06.351Z] Time:          Tue Apr 08 2025 18:02:06 GMT+0530 (India Standard Time)
-[debug] [2025-04-08T12:32:06.351Z] ----------------------------------------------------------------------
+[debug] [2025-04-19T04:10:49.907Z] ----------------------------------------------------------------------
+[debug] [2025-04-19T04:10:49.909Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\hkd27\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --only functions
+[debug] [2025-04-19T04:10:49.909Z] CLI Version:   14.0.1
+[debug] [2025-04-19T04:10:49.910Z] Platform:      win32
+[debug] [2025-04-19T04:10:49.910Z] Node Version:  v22.12.0
+[debug] [2025-04-19T04:10:49.910Z] Time:          Sat Apr 19 2025 09:40:49 GMT+0530 (India Standard Time)
+[debug] [2025-04-19T04:10:49.910Z] ----------------------------------------------------------------------
 [debug] 
-[debug] [2025-04-08T12:32:06.657Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
-[debug] [2025-04-08T12:32:06.658Z] > authorizing via signed-in user (dhanayat.harshat@gmail.com)
+[debug] [2025-04-19T04:10:50.177Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-19T04:10:50.177Z] > authorizing via signed-in user (dhanayat.harshat@gmail.com)
 [info] i  emulators: Starting emulators: functions {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: functions"}}
-[debug] [2025-04-08T12:32:06.668Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
-[debug] [2025-04-08T12:32:06.668Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
-[debug] [2025-04-08T12:32:06.673Z] [hub] writing locator at C:\Users\hkd27\AppData\Local\Temp\hub-meetnest-67b2b.json
-[debug] [2025-04-08T12:32:06.697Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
-[debug] [2025-04-08T12:32:06.697Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
-[debug] [2025-04-08T12:32:06.697Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
-[debug] [2025-04-08T12:32:06.697Z] late-assigned ports for functions and eventarc emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"functions":[{"address":"127.0.0.1","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
+[debug] [2025-04-19T04:10:50.187Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-04-19T04:10:50.187Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2025-04-19T04:10:50.193Z] [hub] writing locator at C:\Users\hkd27\AppData\Local\Temp\hub-meetnest-67b2b.json
+[debug] [2025-04-19T04:10:50.215Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-04-19T04:10:50.215Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-04-19T04:10:50.215Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-04-19T04:10:50.215Z] late-assigned ports for functions and eventarc emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"functions":[{"address":"127.0.0.1","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
 [warn] !  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: \u001b[1mapphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect\u001b[22m"}}
-[debug] [2025-04-08T12:32:06.712Z] defaultcredentials: writing to file C:\Users\hkd27\AppData\Roaming\firebase\dhanayat_harshat_gmail.com_application_default_credentials.json
-[debug] [2025-04-08T12:32:06.713Z] Setting GAC to C:\Users\hkd27\AppData\Roaming\firebase\dhanayat_harshat_gmail.com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\hkd27\\AppData\\Roaming\\firebase\\dhanayat_harshat_gmail.com_application_default_credentials.json"}}
-[debug] [2025-04-08T12:32:06.714Z] Checked if tokens are valid: false, expires at: 1744114995788
-[debug] [2025-04-08T12:32:06.714Z] Checked if tokens are valid: false, expires at: 1744114995788
-[debug] [2025-04-08T12:32:06.714Z] > refreshing access token with scopes: []
-[debug] [2025-04-08T12:32:06.716Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
-[debug] [2025-04-08T12:32:06.716Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
-[debug] [2025-04-08T12:32:06.884Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
-[debug] [2025-04-08T12:32:06.884Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
-[debug] [2025-04-08T12:32:06.895Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/meetnest-67b2b/adminSdkConfig [none]
-[debug] [2025-04-08T12:32:07.509Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/meetnest-67b2b/adminSdkConfig 200
-[debug] [2025-04-08T12:32:07.509Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/meetnest-67b2b/adminSdkConfig {"projectId":"meetnest-67b2b","storageBucket":"meetnest-67b2b.firebasestorage.app"}
+[debug] [2025-04-19T04:10:50.230Z] defaultcredentials: writing to file C:\Users\hkd27\AppData\Roaming\firebase\dhanayat_harshat_gmail.com_application_default_credentials.json
+[debug] [2025-04-19T04:10:50.233Z] Setting GAC to C:\Users\hkd27\AppData\Roaming\firebase\dhanayat_harshat_gmail.com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\hkd27\\AppData\\Roaming\\firebase\\dhanayat_harshat_gmail.com_application_default_credentials.json"}}
+[debug] [2025-04-19T04:10:50.234Z] Checked if tokens are valid: false, expires at: 1744994055068
+[debug] [2025-04-19T04:10:50.234Z] Checked if tokens are valid: false, expires at: 1744994055068
+[debug] [2025-04-19T04:10:50.235Z] > refreshing access token with scopes: []
+[debug] [2025-04-19T04:10:50.236Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-04-19T04:10:50.236Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-04-19T04:10:50.381Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-04-19T04:10:50.381Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-04-19T04:10:50.387Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/meetnest-67b2b/adminSdkConfig [none]
+[debug] [2025-04-19T04:10:50.853Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/meetnest-67b2b/adminSdkConfig 200
+[debug] [2025-04-19T04:10:50.853Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/meetnest-67b2b/adminSdkConfig {"projectId":"meetnest-67b2b","storageBucket":"meetnest-67b2b.firebasestorage.app"}
 [info] i  functions: Watching "C:\Users\hkd27\Documents\Personal\React Expo - Neighborly\functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"C:\\Users\\hkd27\\Documents\\Personal\\React Expo - Neighborly\\functions\" for Cloud Functions..."}}
-[debug] [2025-04-08T12:32:07.537Z] Validating nodejs source
-[debug] [2025-04-08T12:32:08.328Z] > [functions] package.json contents: {
+[debug] [2025-04-19T04:10:50.891Z] Validating nodejs source
+[debug] [2025-04-19T04:10:51.694Z] > [functions] package.json contents: {
   "main": "lib/index.js",
   "scripts": {
     "genkit:start": "genkit start -- tsx --watch src/genkit-sample.ts",
@@ -72,23 +72,23 @@
   },
   "private": true
 }
-[debug] [2025-04-08T12:32:08.328Z] Building nodejs source
-[debug] [2025-04-08T12:32:08.328Z] Failed to find version of module node: reached end of search path C:\Users\hkd27\Documents\Personal\React Expo - Neighborly\functions\node_modules
+[debug] [2025-04-19T04:10:51.694Z] Building nodejs source
+[debug] [2025-04-19T04:10:51.695Z] Failed to find version of module node: reached end of search path C:\Users\hkd27\Documents\Personal\React Expo - Neighborly\functions\node_modules
 [info] +  functions: Using node@22 from host. 
 [info] i  functions: Loaded environment variables from .env.local. 
-[debug] [2025-04-08T12:32:08.332Z] Could not find functions.yaml. Must use http discovery
-[debug] [2025-04-08T12:32:08.337Z] Found firebase-functions binary at 'C:\Users\hkd27\Documents\Personal\React Expo - Neighborly\functions\node_modules\.bin\firebase-functions'
-[info] Serving at port 8043
+[debug] [2025-04-19T04:10:51.698Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-04-19T04:10:51.705Z] Found firebase-functions binary at 'C:\Users\hkd27\Documents\Personal\React Expo - Neighborly\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8465
 
 [info] {"severity":"INFO","message":"MongoDB URI: mongodb+srv://dhanayatharshat:***@meetnestv0.j9j7rft.mongodb.net/"}
 {"severity":"INFO","message":"MongoDB Database Name: meetnest_v0"}
 
-[debug] [2025-04-08T12:32:09.195Z] Got response from /__/functions.yaml {"endpoints":{"api":{"availableMemoryMb":256,"timeoutSeconds":540,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"api"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[debug] [2025-04-19T04:10:52.681Z] Got response from /__/functions.yaml {"endpoints":{"api":{"availableMemoryMb":256,"timeoutSeconds":540,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"api"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
 [info] +  functions: Loaded functions definitions from source: api. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: api."}}
 [info] +  functions[us-central1-api]: http function initialized (http://127.0.0.1:5001/meetnest-67b2b/us-central1/api). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/meetnest-67b2b/us-central1/api)."}}
 [info] i  functions: Watching "C:\Users\hkd27\Documents\Personal\React Expo - Neighborly\meetnest_test_v0" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"C:\\Users\\hkd27\\Documents\\Personal\\React Expo - Neighborly\\meetnest_test_v0\" for Cloud Functions..."}}
-[debug] [2025-04-08T12:32:13.242Z] Validating nodejs source
-[debug] [2025-04-08T12:32:14.028Z] > [functions] package.json contents: {
+[debug] [2025-04-19T04:10:56.741Z] Validating nodejs source
+[debug] [2025-04-19T04:10:57.495Z] > [functions] package.json contents: {
   "name": "functions",
   "description": "Cloud Functions for Firebase",
   "scripts": {
@@ -111,16 +111,16 @@
   },
   "private": true
 }
-[debug] [2025-04-08T12:32:14.028Z] Building nodejs source
-[debug] [2025-04-08T12:32:14.028Z] Failed to find version of module node: reached end of search path C:\Users\hkd27\Documents\Personal\React Expo - Neighborly\meetnest_test_v0\node_modules
+[debug] [2025-04-19T04:10:57.495Z] Building nodejs source
+[debug] [2025-04-19T04:10:57.495Z] Failed to find version of module node: reached end of search path C:\Users\hkd27\Documents\Personal\React Expo - Neighborly\meetnest_test_v0\node_modules
 [info] +  functions: Using node@22 from host. 
-[debug] [2025-04-08T12:32:14.029Z] Could not find functions.yaml. Must use http discovery
-[debug] [2025-04-08T12:32:14.034Z] Found firebase-functions binary at 'C:\Users\hkd27\Documents\Personal\React Expo - Neighborly\meetnest_test_v0\node_modules\.bin\firebase-functions'
-[info] Serving at port 8092
+[debug] [2025-04-19T04:10:57.496Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-04-19T04:10:57.501Z] Found firebase-functions binary at 'C:\Users\hkd27\Documents\Personal\React Expo - Neighborly\meetnest_test_v0\node_modules\.bin\firebase-functions'
+[info] Serving at port 8987
 
-[debug] [2025-04-08T12:32:14.586Z] Got response from /__/functions.yaml {"endpoints":{},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[debug] [2025-04-19T04:10:58.159Z] Got response from /__/functions.yaml {"endpoints":{},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
 [info] +  functions: Loaded functions definitions from source: . {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: ."}}
-[debug] [2025-04-08T12:32:18.609Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: connect ECONNREFUSED ::1:40001. If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[debug] [2025-04-19T04:11:02.181Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: connect ECONNREFUSED ::1:40001. If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
 [info] 
 ┌─────────────────────────────────────────────────────────────┐
 │ ✔  All emulators ready! It is now safe to connect your app. │

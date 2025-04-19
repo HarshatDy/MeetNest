@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Modal, StatusBar, InteractionManager, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Modal, StatusBar, InteractionManager, Platform, Dimensions, UIManager } from 'react-native'; // Added UIManager
 import { Ionicons } from '@expo/vector-icons';
 import PostDetailScreen from '../screens/PostDetailScreen';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,32 @@ import { LayoutDebugger } from '../utils/LayoutDebugger';
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
+
+// Helper function to format duration (seconds to H:MM:SS or M:SS)
+const formatDuration = (seconds = 0) => {
+    if (isNaN(seconds) || seconds < 0) return '0s';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60); // Use floor for whole seconds
+
+    const hStr = h > 0 ? `${h}h ` : '';
+    const mStr = m > 0 ? `${m}m ` : '';
+    const sStr = `${s}s`;
+
+    if (h > 0) return `${hStr}${mStr}${sStr}`;
+    if (m > 0) return `${mStr}${sStr}`;
+    return sStr;
+};
+
+// Helper function to format distance (meters to km or m)
+const formatDistance = (meters = 0) => {
+    if (isNaN(meters) || meters < 0) return '0 m';
+    if (meters >= 1000) {
+      return `${(meters / 1000).toFixed(2)} km`;
+    }
+    return `${meters.toFixed(0)} m`;
+};
+
 
 export default function PostCard({ post }) {
   const [modalVisible, setModalVisible] = useState(false);
@@ -195,15 +221,30 @@ export default function PostCard({ post }) {
         </View>
 
         {/* Post content */}
-        <Text style={styles.content}>{post.content}</Text>
-        
+        {post.content && <Text style={styles.content}>{post.content}</Text>}
+
         {/* Post image if available */}
         {post.image && (
           <Image source={{ uri: post.image }} style={styles.postImage} />
         )}
 
+        {/* Activity Data Display */}
+        {post.type === 'activity' && post.activityData && (
+          <View style={styles.activityDataContainer}>
+             <View style={styles.activityStat}>
+                <Ionicons name="time-outline" size={16} color="#555" />
+                <Text style={styles.activityStatText}>{formatDuration(post.activityData.duration)}</Text>
+             </View>
+             <View style={styles.activityStat}>
+                <Ionicons name="map-outline" size={16} color="#555" />
+                <Text style={styles.activityStatText}>{formatDistance(post.activityData.distance)}</Text>
+             </View>
+             {/* TODO: Add Map Snapshot Preview here later */}
+          </View>
+        )}
+
         {/* Activity info if available */}
-        {post.activity && (
+        {post.activity && !post.activityData && ( // Only show if activityData isn't present
           <View style={styles.activityContainer}>
             <Ionicons name="fitness-outline" size={20} color="#007AFF" />
             <Text style={styles.activityText}>{post.activity}</Text>
@@ -353,12 +394,35 @@ const styles = StyleSheet.create({
     height: 250,
     backgroundColor: '#f0f0f0',
   },
-  activityContainer: {
+  activityDataContainer: { // New style for activity data
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: '#f7f7f7', // Slightly different background
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  activityStat: { // New style for each stat (duration, distance)
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  activityStatText: { // New style for the text of each stat
+    marginLeft: 5,
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  activityContainer: { // Existing style for simple activity text
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f0f8ff',
     padding: 10,
-    marginTop: 2,
+    marginTop: 2, // Adjust as needed
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
   },
   activityText: {
     color: '#007AFF',

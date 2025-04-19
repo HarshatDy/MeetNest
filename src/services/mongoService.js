@@ -154,10 +154,55 @@ export async function calculateLeaderboard(societyId, timeframe) {
 
 export async function createPost(postData) {
   try {
-    return await apiClient.createPost(postData);
+    console.log('[mongoService][createPost] Attempting to create post with data:', 
+      JSON.stringify({
+        title: postData.title,
+        content: postData.content,
+        type: postData.type,
+        authorId: postData.authorId,
+        // Omit large path data to avoid console flooding
+        hasPath: !!postData.activityData?.path
+      })
+    );
+
+    // Ensure authorId is valid - check both possible formats
+    if (!postData.authorId) {
+      console.error('[mongoService][createPost] Missing authorId in post data');
+      throw new Error('Author ID is required to create a post');
+    }
+
+    // Log the full authorId for debugging ID format issues
+    console.log('[mongoService][createPost] Author ID format:', {
+      authorId: postData.authorId,
+      type: typeof postData.authorId,
+      isObjectId: typeof postData.authorId === 'string' && 
+                  /^[0-9a-fA-F]{24}$/.test(postData.authorId)
+    });
+
+    // Call the API endpoint
+    const response = await apiClient.createPost(postData);
+    console.log('[mongoService][createPost] Successfully created post:', 
+      JSON.stringify(response));
+    
+    return response;
   } catch (error) {
-    console.error('Error creating post:', error);
-    throw error;
+    console.error('[mongoService][createPost] Error creating post:', error);
+    // Enhanced error object with more context
+    throw {
+      message: error.message || 'Failed to create post',
+      originalError: error,
+      context: {
+        endpoint: '/api/posts',
+        method: 'POST',
+        dataProvided: {
+          hasAuthorId: !!postData.authorId,
+          hasTitle: !!postData.title,
+          hasContent: !!postData.content,
+          hasActivityData: !!postData.activityData,
+          hasPath: !!postData.activityData?.path
+        }
+      }
+    };
   }
 }
   
@@ -175,13 +220,23 @@ export async function getPosts(societyId, limit = 20, lastPostTimestamp = null) 
   }
 }
   
-// Events methods
-export async function getEvents(status, societyId) {
+// Utility function to get events with society filter and status
+export async function getEvents(status, societyId = 'default') {
   try {
-    return await apiClient.getEvents(status, societyId);
+    console.log('[mongoService][getEvents] Fetching events with params:', { status, societyId });
+    // Build the query parameters
+    let queryParams = `societyId=${societyId}`;
+    if (status && status !== 'all') {
+      queryParams += `&status=${status}`;
+    }
+    
+    // Make the API request
+    const response = await apiClient.getEvents(queryParams);
+    console.log('[mongoService][getEvents] Fetched events:', response?.length || 0);
+    return response || [];
   } catch (error) {
-    console.error('Error fetching events:', error);
-    throw error;
+    console.error('[mongoService][getEvents] Error fetching events:', error.message);
+    return []; // Return empty array instead of throwing to prevent UI crashes
   }
 }
 

@@ -13,6 +13,7 @@ import { NavigationHelper } from './utils/NavigationHelper';
 import { MongoDBProvider } from './src/context/MongoDBContext';
 // Import from supabaseDatabase instead of database
 import { setPreference, getPreference } from './src/utils/supabaseDatabase';
+import AppNavigator from './navigation/AppNavigator';
 
 // Import the page components with explicit file extensions
 import LoginPage from './pages/LoginPage.js';
@@ -20,6 +21,9 @@ import RegisterPage from './pages/RegisterPage.js';
 import OTPVerificationPage from './pages/OTPVerificationPage.js';
 // Remove or fix the HomePage import if it's not needed or incorrectly referenced
 // import HomePage from './pages/HomePage';
+
+// Add API verification import
+import { verifyApiOnStartup } from './utils/ApiConnectionCheck';
 
 // Ignore specific warnings
 LogBox.ignoreLogs([
@@ -83,6 +87,31 @@ export default function App() {
     };
     
     setupDatabase();
+  }, []);
+
+  // Verify API connectivity on app start
+  useEffect(() => {
+    const verifyConnections = async () => {
+      try {
+        // Verify API connectivity
+        const apiConnected = await verifyApiOnStartup();
+        console.log('[App] API connectivity verification:', apiConnected ? 'Success' : 'Failed');
+        
+        // If API connection fails, still allow the app to load but log the warning
+        if (!apiConnected) {
+          // Use debug instead of warn
+          Logger.debug('App', 'API connection verification failed on startup. Some features may be limited.');
+        }
+        
+        // You could set this in state if you want to show a banner or indicator in the UI
+        // setIsApiConnected(apiConnected);
+      } catch (error) {
+        console.error('[App] Error verifying connections:', error.message);
+        Logger.error('App', 'Error verifying API connection on startup', error);
+      }
+    };
+    
+    verifyConnections();
   }, []);
 
   // Set navigation reference for NavigationHelper when ref is available
@@ -245,7 +274,8 @@ export default function App() {
               >
                 <Stack.Navigator screenOptions={{ headerShown: false }}>
                   {isLoggedIn ? (
-                    <Stack.Screen name="MainApp" component={MainTabNavigator} />
+                    // Use AppNavigator as the only stack for logged-in users
+                    <Stack.Screen name="AppNavigator" component={AppNavigator} />
                   ) : (
                     <>
                       <Stack.Screen name="Login" component={LoginPage} />

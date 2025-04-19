@@ -1,72 +1,104 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-const ACTIVITY_HISTORY = [
-  {
-    id: '1',
-    type: 'post',
-    title: 'Annual society maintenance',
-    date: '2023-08-12',
-    likes: 15,
-    comments: 3
-  },
-  {
-    id: '2',
-    type: 'event',
-    title: 'Summer Sports Camp',
-    date: '2023-08-01',
-    role: 'Organizer',
-    participants: 30
-  },
-  {
-    id: '3',
-    type: 'challenge',
-    title: 'Table Tennis Tournament',
-    date: '2023-07-25',
-    result: 'Won',
-    opponent: 'Michael Green'
-  },
-  {
-    id: '4',
-    type: 'post',
-    title: 'Society garden renovation plans',
-    date: '2023-07-20',
-    likes: 24,
-    comments: 8
-  },
-  {
-    id: '5',
-    type: 'event',
-    title: 'Spring Cleaning Drive',
-    date: '2023-07-05',
-    role: 'Participant',
-    participants: 55
-  },
-  {
-    id: '6',
-    type: 'challenge',
-    title: 'Chess Competition',
-    date: '2023-06-18',
-    result: 'Lost',
-    opponent: 'Sarah Johnson'
-  },
-  {
-    id: '7',
-    type: 'post',
-    title: 'New society amenities proposal',
-    date: '2023-06-10',
-    likes: 32,
-    comments: 12
-  }
-];
+import { useUser } from '../../contexts/UserContext';
+import { Logger } from '../../utils/Logger';
 
 export default function ActivityHistoryScreen() {
   const [filter, setFilter] = useState('all');
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const { user } = useUser();
+  
+  // Fetch user activities from MongoDB when component mounts
+  useEffect(() => {
+    fetchUserActivities();
+  }, []);
+  
+  // Fetch activities when filter changes
+  useEffect(() => {
+    filterActivities();
+  }, [filter]);
+  
+  const fetchUserActivities = async () => {
+    if (!user || (!user.id && !user._id)) {
+      setError('User not found. Please login again.');
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const userId = user.id || user._id;
+      Logger.debug('ActivityHistoryScreen', 'Fetching activities for user', { userId });
+      
+      // Import MongoDB services
+      const { getPosts, getEvents } = require('../../src/services/mongoService');
+      
+      // Get society ID if available
+      const societyId = user.societies?.[0] || user.society || 'default';
+      
+      // Fetch posts for this user
+      const posts = await getPosts(societyId, 50); // Fetch up to 50 posts to filter
+      const userPosts = posts
+        .filter(post => post.authorId === userId) 
+        .map(post => ({
+          id: post._id || post.id,
+          type: 'post',
+          title: post.title || post.content?.substring(0, 30) || 'Untitled Post',
+          date: post.timestamp || post.createdAt,
+          likes: post.likes || 0,
+          comments: post.comments || 0
+        }));
+      
+      Logger.debug('ActivityHistoryScreen', 'User posts fetched', { count: userPosts.length });
+      
+      // Fetch events where this user is participant or organizer
+      const events = await getEvents('all', societyId);
+      const userEvents = events
+        .filter(event => 
+          event.organizer?.id === userId || 
+          event.participants?.some(p => p.id === userId)
+        )
+        .map(event => ({
+          id: event._id || event.id,
+          type: 'event',
+          title: event.title || 'Untitled Event',
+          date: event.date || event.createdAt,
+          role: event.organizer?.id === userId ? 'Organizer' : 'Participant',
+          participants: event.participants?.length || 0
+        }));
+      
+      Logger.debug('ActivityHistoryScreen', 'User events fetched', { count: userEvents.length });
+      
+      // Combine and sort all activities by date (most recent first)
+      const allActivities = [...userPosts, ...userEvents];
+      allActivities.sort((a, b) => new Date(b.date) - new Date(a.date));
+      
+      setActivities(allActivities);
+      setLoading(false);
+    } catch (error) {
+      Logger.error('ActivityHistoryScreen', 'Error fetching activities', error);
+      setError('Failed to load activities. Please try again later.');
+      setLoading(false);
+    }
+  };
+  
+  const filterActivities = () => {
+    if (filter !== 'all') {
+      setLoading(true);
+      // Just apply the filter - no need to fetch again
+      setTimeout(() => {
+        setLoading(false);
+      }, 100); // Small delay for UI feedback
+    }
+  };
   
   const filteredActivities = filter === 'all' 
-    ? ACTIVITY_HISTORY 
-    : ACTIVITY_HISTORY.filter(activity => activity.type === filter);
+    ? activities 
+    : activities.filter(activity => activity.type === filter);
 
   const getActivityIcon = (type) => {
     switch (type) {
@@ -186,6 +218,7 @@ export default function ActivityHistoryScreen() {
           Events
         </Text>
       </TouchableOpacity>
+      {/* Keep the challenge filter but it may be empty until challenges are implemented */}
       <TouchableOpacity 
         style={[styles.filterButton, filter === 'challenge' && styles.activeFilterButton]}
         onPress={() => setFilter('challenge')}
@@ -196,6 +229,49 @@ export default function ActivityHistoryScreen() {
       </TouchableOpacity>
     </View>
   );
+  
+  // Render loading state
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading your activities...</Text>
+      </View>
+    );
+  }
+  
+  // Render error state
+  if (error) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Ionicons name="alert-circle-outline" size={40} color="#FF3B30" />
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={fetchUserActivities}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+  
+  // Render empty state
+  if (!filteredActivities.length) {
+    return (
+      <View style={styles.container}>
+        {renderFilters()}
+        <View style={[styles.centerContent, {flex: 1}]}>
+          <Ionicons name="calendar-outline" size={40} color="#999" />
+          <Text style={styles.emptyStateText}>
+            {filter === 'all' 
+              ? 'No activities found.' 
+              : `No ${filter}s found.`}
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -286,5 +362,38 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666',
     marginLeft: 4,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#FF3B30',
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: '#007AFF',
+    borderRadius: 5,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
 });

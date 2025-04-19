@@ -38,10 +38,12 @@ async function isOnline() {
  */
 async function apiRequest(endpoint, method = 'GET', data = null, timeout = REQUEST_TIMEOUT) {
   const url = `${API_BASE_URL}${endpoint}`;
+  console.log(`[apiClient][apiRequest] ${method} request to ${url}`);
   
   // Check for internet connectivity first
   const online = await isOnline();
   if (!online) {
+    console.error('[apiClient][apiRequest] Network connection unavailable');
     throw new Error('Network connection unavailable. Please check your internet connection.');
   }
   
@@ -56,6 +58,7 @@ async function apiRequest(endpoint, method = 'GET', data = null, timeout = REQUE
 
   if (data) {
     options.body = JSON.stringify(data);
+    console.log(`[apiClient][apiRequest] Request includes body data`);
   }
 
   try {
@@ -69,6 +72,8 @@ async function apiRequest(endpoint, method = 'GET', data = null, timeout = REQUE
       fetch(url, options),
       timeoutPromise
     ]);
+    
+    console.log(`[apiClient][apiRequest] Response status: ${response.status}`);
     
     // Parse response data
     let responseData;
@@ -89,12 +94,13 @@ async function apiRequest(endpoint, method = 'GET', data = null, timeout = REQUE
       const errorMessage = 
         (responseData && responseData.error) || 
         `API Error: ${response.status}${responseData ? ' - ' + JSON.stringify(responseData) : ''}`;
+      console.error(`[apiClient][apiRequest] Response error: ${errorMessage}`);
       throw new Error(errorMessage);
     }
     
     return responseData;
   } catch (error) {
-    console.error(`API ${method} ${endpoint} failed:`, error);
+    console.error(`[apiClient][apiRequest] ${method} ${endpoint} failed:`, error.message);
     
     // Enhance error message based on the error type
     if (error.message === 'Network request failed') {
@@ -152,7 +158,27 @@ export async function getPosts(societyId = 'default', limit = 20) {
 }
 
 export async function createPost(postData) {
-  return apiRequest('/api/posts', 'POST', postData);
+  console.log('[apiClient][createPost] Starting API request to create post');
+  
+  // Sanitize the data for logging (remove large objects like path)
+  const sanitizedData = {...postData};
+  if (sanitizedData.activityData && sanitizedData.activityData.path) {
+    sanitizedData.activityData = {
+      ...sanitizedData.activityData,
+      path: `[Array with ${sanitizedData.activityData.path.length} points]`
+    };
+  }
+  console.log('[apiClient][createPost] Post data:', JSON.stringify(sanitizedData));
+  
+  try {
+    // Explicitly set the timeout longer for post creation since it might involve large data
+    const response = await apiRequest('/api/posts', 'POST', postData, 30000); // 30 second timeout
+    console.log('[apiClient][createPost] API response received:', JSON.stringify(response));
+    return response;
+  } catch (error) {
+    console.error('[apiClient][createPost] API request failed:', error.message);
+    throw error; // Rethrow to let the calling service handle it
+  }
 }
 
 // Tournaments endpoints
@@ -173,9 +199,17 @@ export async function getLeaderboard(societyId, timeframe = 'month') {
   return apiRequest(`/api/leaderboard?societyId=${societyId}&timeframe=${timeframe}`);
 }
 
-// Events endpoints
-export async function getEvents(status, societyId) {
-  return apiRequest(`/api/events?status=${status}&societyId=${societyId}`);
+// Events endpoints with proper query parameter handling
+export async function getEvents(queryParams) {
+  // Build the URL with query params
+  const endpoint = queryParams ? `/api/events?${queryParams}` : '/api/events';
+  
+  try {
+    return await apiRequest(endpoint);
+  } catch (error) {
+    console.error('[apiClient][getEvents] Error fetching events:', error.message);
+    throw error;
+  }
 }
 
 // Test API connection - used to verify connectivity
