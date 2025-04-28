@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Logger, DEBUG_ENABLED } from '../../utils/Logger';
-// Remove AsyncStorage import as we're no longer using it
 import { AppContext } from '../../App';
 import { NavigationHelper } from '../../utils/NavigationHelper';
 import { useRootNavigation } from '../../hooks/useRootNavigation';
@@ -232,6 +231,27 @@ export default function ProfileScreen({ navigation }) {
           </View>
         </View>
 
+        {/* Society Actions */}
+        <View style={styles.societyActions}>
+          <Text style={styles.sectionTitle}>Society Actions</Text>
+          <View style={styles.societyButtonsContainer}>
+            <TouchableOpacity 
+              style={styles.societyButton} 
+              onPress={() => navigation.navigate('CreateSociety')}
+            >
+              <Ionicons name="add-circle-outline" size={24} color="white" />
+              <Text style={styles.societyButtonText}>Create Society</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.societyButton, styles.joinButton]} 
+              onPress={() => navigation.navigate('JoinSociety')}
+            >
+              <Ionicons name="people-outline" size={24} color="white" />
+              <Text style={styles.societyButtonText}>Join Society</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Badges</Text>
@@ -422,6 +442,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     marginTop: 2,
+  },
+  // Society actions styles
+  societyActions: {
+    backgroundColor: 'white',
+    marginTop: 10,
+    padding: 15,
+  },
+  societyButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 15,
+  },
+  societyButton: {
+    flexDirection: 'row',
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 0.48,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 2,
+  },
+  joinButton: {
+    backgroundColor: '#34C759', // Green color for join button
+  },
+  societyButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginLeft: 8,
   },
   // Logout button styles
   logoutButton: {

@@ -230,6 +230,40 @@ export async function testConnection() {
   }
 }
 
+// Society endpoints
+export async function getSocieties() {
+  try {
+    console.log('[apiClient][getSocieties] Fetching societies');
+    const response = await apiRequest('/api/societies');
+    return response.societies || [];
+  } catch (error) {
+    console.error('[apiClient][getSocieties] Error fetching societies:', error.message);
+    throw new Error(`Failed to fetch societies: ${error.message}`);
+  }
+}
+
+export async function createSociety(societyData) {
+  try {
+    console.log('[apiClient][createSociety] Creating new society');
+    const response = await apiRequest('/api/societies', 'POST', societyData);
+    return response.society;
+  } catch (error) {
+    console.error('[apiClient][createSociety] Error creating society:', error.message);
+    throw new Error(`Failed to create society: ${error.message}`);
+  }
+}
+
+export async function joinSociety(userId, societyId) {
+  try {
+    console.log(`[apiClient][joinSociety] User ${userId} joining society ${societyId}`);
+    const response = await apiRequest('/api/societies/join', 'POST', { userId, societyId });
+    return response;
+  } catch (error) {
+    console.error('[apiClient][joinSociety] Error joining society:', error.message);
+    throw new Error(`Failed to join society: ${error.message}`);
+  }
+}
+
 export default {
   getUser,
   createUser,
@@ -245,5 +279,8 @@ export default {
   getLeaderboard,
   getEvents,
   testConnection,
-  getAllUsers
+  getAllUsers,
+  getSocieties,
+  createSociety,
+  joinSociety,
 };

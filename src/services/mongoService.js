@@ -283,6 +283,73 @@ export async function fetchUsers() {
   }
 }
 
+// Society operations
+export async function getSocieties() {
+  try {
+    console.log('[mongoService][getSocieties] Fetching all societies');
+    const societies = await apiClient.getSocieties();
+    console.log(`[mongoService][getSocieties] Successfully fetched ${societies.length} societies`);
+    return societies;
+  } catch (error) {
+    console.error('[mongoService][getSocieties] Error fetching societies:', error);
+    return []; // Return empty array instead of throwing to prevent UI crashes
+  }
+}
+
+export async function createSociety(societyData) {
+  try {
+    console.log('[mongoService][createSociety] Creating new society:', 
+      JSON.stringify({
+        name: societyData.name,
+        description: societyData.description,
+        location: societyData.location,
+        createdBy: societyData.createdBy
+      })
+    );
+    
+    const response = await apiClient.createSociety(societyData);
+    console.log('[mongoService][createSociety] Society created successfully:', 
+      JSON.stringify({
+        _id: response._id,
+        name: response.name
+      })
+    );
+    return response;
+  } catch (error) {
+    console.error('[mongoService][createSociety] Error creating society:', error);
+    throw error;
+  }
+}
+
+export async function joinSociety(userId, societyId) {
+  try {
+    console.log(`[mongoService][joinSociety] User ${userId} joining society ${societyId}`);
+    
+    // Call the API to join society
+    const response = await apiClient.joinSociety(userId, societyId);
+    
+    // Update the user locally to reflect the change
+    const user = await getUser(userId);
+    if (user) {
+      // Add society to user's societies array if it doesn't exist already
+      if (!user.societies) {
+        user.societies = [societyId];
+      } else if (!user.societies.includes(societyId)) {
+        user.societies.push(societyId);
+      }
+      
+      // Update the user in MongoDB
+      await updateUser(userId, user);
+    }
+    
+    console.log(`[mongoService][joinSociety] User ${userId} successfully joined society ${societyId}`);
+    return response;
+  } catch (error) {
+    console.error(`[mongoService][joinSociety] Error joining society:`, error);
+    throw error;
+  }
+}
+
 export default {
   getUser,
   createUser,
@@ -298,5 +365,8 @@ export default {
   getPosts,
   getEvents,
   getAllUsers, // Add the new function to exports
-  fetchUsers
+  fetchUsers,
+  getSocieties,
+  createSociety,
+  joinSociety,
 };

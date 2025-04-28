@@ -199,6 +199,213 @@ app.post("/api/posts", async (req: Request, res: Response) => {
   }
 });
 
+// Society endpoints
+app.get("/api/societies", async (req: Request, res: Response) => {
+  try {
+    const client = await connectToDatabase();
+    const db = client.db(dbName);
+    const collection = db.collection("societies");
+
+    const societies = await collection.find({}).toArray();
+    res.status(200).json({
+      success: true,
+      societies,
+    });
+  } catch (error) {
+    logger.error("Error fetching societies:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch societies",
+    });
+  }
+});
+
+app.post("/api/societies", async (req: Request, res: Response) => {
+  try {
+    const client = await connectToDatabase();
+    const db = client.db(dbName);
+    const collection = db.collection("societies");
+
+    const societyData = {
+      ...req.body,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      memberCount: 1, // Initialize with creator as first member
+    };
+    logger.info(`Js ociety req rec: ${JSON.stringify(societyData)}`);
+    const result = await collection.insertOne(societyData);
+
+    // If there's a createdBy field, add this society to the user's societies
+    if (societyData.createdBy) {
+      const usersCollection = db.collection("users");
+      let userQuery = {};
+
+      // Be more cautious with ObjectId conversion
+      try {
+        if (ObjectId.isValid(societyData.createdBy)) {
+          userQuery = {
+            $or: [
+              {_id: new ObjectId(societyData.createdBy)},
+              {id: societyData.createdBy},
+            ],
+          };
+        } else {
+          userQuery = {id: societyData.createdBy};
+        }
+      } catch (err) {
+        // If any error in ObjectId conversion, use string ID
+        userQuery = {id: societyData.createdBy};
+      }
+
+      // Check if user exists before updating
+      const user = await usersCollection.findOne(userQuery);
+      if (user) {
+        await usersCollection.updateOne(
+          userQuery,
+          {$addToSet: {societies: result.insertedId.toString()}}
+        );
+      } else {
+        logger.warn(`User ${societyData.createdBy} not found when creat soc`);
+        // Continue even if user not found - don't fail society creation
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      societyId: result.insertedId,
+      society: {
+        ...societyData,
+        _id: result.insertedId,
+      },
+    });
+  } catch (error) {
+    logger.error("Error creating society:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to create society",
+    });
+  }
+});
+
+app.post("/api/societies/join", async (req: Request, res: Response) => {
+  try {
+    const client = await connectToDatabase();
+    const db = client.db(dbName);
+    const societiesCollection = db.collection("societies");
+    const usersCollection = db.collection("users");
+
+    const {userId, societyId} = req.body;
+    logger.info(`Jsociety req rec: userId=${userId}, societyId=${societyId}`);
+
+    if (!userId || !societyId) {
+      return res.status(400).json({
+        success: false,
+        error: "Both userId and societyId are required",
+      });
+    }
+
+    // Check if society exists
+    let societyQuery = {};
+    try {
+      if (ObjectId.isValid(societyId)) {
+        societyQuery = {_id: new ObjectId(societyId)};
+      } else {
+        societyQuery = {id: societyId};
+      }
+    } catch (err) {
+      societyQuery = {id: societyId};
+    }
+
+    const society = await societiesCollection.findOne(societyQuery);
+    if (!society) {
+      logger.error(`Society not found: ${societyId}`);
+      return res.status(404).json({
+        success: false,
+        error: "Society not found",
+      });
+    }
+
+    // Check if user exists
+    let userQuery = {};
+    try {
+      if (ObjectId.isValid(userId)) {
+        userQuery = {
+          $or: [
+            {_id: new ObjectId(userId)},
+            {id: userId},
+          ],
+        };
+      } else {
+        userQuery = {id: userId};
+      }
+    } catch (err) {
+      userQuery = {id: userId};
+    }
+
+    const user = await usersCollection.findOne(userQuery);
+    if (!user) {
+      logger.error(`User not found: ${userId}`);
+      return res.status(404).json({
+        success: false,
+        error: "User not found",
+      });
+    }
+
+    // Convert society ID to string
+    const societyIdStr=society._id ?society._id.toString():societyId.toString();
+
+    // Check if user is already a member
+    if (user.societies && user.societies.includes(societyIdStr)) {
+      logger.info(`User ${userId} is already a mem of society ${societyIdStr}`);
+      return res.status(200).json({
+        success: true,
+        message: "User is already a member of this society",
+        alreadyMember: true,
+      });
+    }
+
+    // Add society to user's societies array
+    logger.info(`Adding society ${societyIdStr} to user ${userId}`);
+    await usersCollection.updateOne(
+      userQuery,
+      {
+        $addToSet: {societies: societyIdStr},
+        $set: {updatedAt: new Date()},
+      }
+    );
+
+    // Increment society memberCount
+    logger.info(`Incrementing member count for society ${societyIdStr}`);
+    await societiesCollection.updateOne(
+      societyQuery,
+      {
+        $inc: {memberCount: 1},
+        $set: {updatedAt: new Date()},
+      }
+    );
+
+    // Fetch updated user to return in the response
+    const updatedUser = await usersCollection.findOne(userQuery);
+
+    return res.status(200).json({
+      success: true,
+      message: `User ${userId} successfully joined society ${societyIdStr}`,
+      user: {
+        id: updatedUser?._id || updatedUser?.id || userId,
+        societies: updatedUser?.societies || [],
+      },
+      societyId: societyIdStr,
+    });
+  } catch (error) {
+    logger.error("Error joining society:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to join society",
+      message: error instanceof Error ? error.message : "Unknown err occurred",
+    });
+  }
+});
+
 // User endpoints
 app.get("/api/users/:userId", async (req: Request, res: Response) => {
   try {
